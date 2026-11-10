@@ -7,6 +7,8 @@ import { parseEnv } from 'node:util';
 import test from 'node:test';
 import { createClient } from '@supabase/supabase-js';
 import { chromium } from 'playwright';
+import { opsAiFingerprint } from '../supabase/functions/_shared/advisor/context.mjs';
+import { comparison, group } from '../supabase/tests/fixtures/advisor-contexts.mjs';
 
 const stack = process.env.CP_RETAIL_AUTH_QA_STACK;
 const callback = 'http://127.0.0.1:4173';
@@ -98,6 +100,54 @@ async function signOut(page, email) {
   await page.waitForURL(callback + '/login');
 }
 
+async function verifyAdvisor({ api, key, owner, other, source }) {
+  const url = new URL('/functions/v1/advisor', api);
+  const call = (recordId, token, origin = callback) => fetch(url, {
+    method: 'POST',
+    headers: {
+      apikey: key, Origin: origin, 'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+    },
+    body: JSON.stringify({ recordId }),
+  });
+  const preflight = await fetch(url, { method: 'OPTIONS', headers: { Origin: callback } });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), callback);
+  const ownerToken = requireSuccess(await owner.auth.getSession(), 'Read first test session').session.access_token;
+  const otherToken = requireSuccess(await other.auth.getSession(), 'Read second test session').session.access_token;
+  const contexts = [
+    { context: JSON.stringify(group), expected: /30 customers/ },
+    { context: comparison, expected: /AI decision review · v1\.2/ },
+  ];
+  for (const { context, expected } of contexts) {
+    const args = {
+      p_name: 'Synthetic Advisor review', p_source_id: source, p_context: context, p_fingerprint: opsAiFingerprint(context),
+    };
+    const recordId = requireSuccess(await owner.rpc('queue_advisor_review', args), 'Queue an Advisor review');
+    assert.equal((await call(recordId)).status, 401, 'Missing user token is denied');
+    assert.equal((await call(recordId, otherToken)).status, 404, 'Other account cannot wake the review');
+    assert.equal((await call(recordId, ownerToken, 'http://127.0.0.1:4189')).status, 403, 'Different browser origin is denied');
+    const responses = await Promise.all([call(recordId, ownerToken), call(recordId, ownerToken)]);
+    for (const response of responses) assert.equal(response.status, 202, 'Owner can wake the review');
+
+    const deadline = Date.now() + 15_000;
+    while (true) {
+      const row = requireSuccess(await owner.from('ai_requests')
+        .select('request_status,answer,answered_at').eq('id', recordId).single(), 'Read the saved review');
+      if (row.request_status === 'Completed') {
+        assert.ok(row.answered_at, 'The Edge background task persisted a timestamp');
+        assert.match(row.answer, expected);
+        break;
+      }
+      assert.ok(row.request_status !== 'Failed' && Date.now() < deadline, 'Edge review must reach Completed');
+      await delay(250);
+    }
+    assert.equal(requireSuccess(await owner.rpc('queue_advisor_review', args), 'Reuse a completed review'), recordId);
+    const foreign = requireSuccess(await other.from('ai_requests').select('id').eq('id', recordId).maybeSingle(), 'Read other review');
+    assert.equal(foreign, null);
+  }
+}
+
 test('the built site verifies email, opens the decision bookmark, resets passwords, and keeps data private', {
   skip: !stack,
   timeout: 120_000,
@@ -184,4 +234,7 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   assert.equal(user.id, a.user.id);
   const retained = requireSuccess(await signedIn.from('scenarios').select('id').eq('id', saved.id).single(), 'Read scenario after recovery');
   assert.equal(retained.id, saved.id);
+  await t.test('the real Edge handler saves both Advisor answers for the verified owner', async () => {
+    await verifyAdvisor({ api, key, owner: signedIn, other: b.supabase, source: saved.id });
+  });
 });

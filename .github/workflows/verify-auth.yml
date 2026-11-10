@@ -11,8 +11,11 @@ on:
       - 'src/lib/routes.mjs'
       - 'src/lib/supabase-client.ts'
       - 'src/screens/CloudAccount.tsx'
+      - 'supabase/functions/**'
       - 'supabase/migrations/**'
       - 'supabase/tests/fixtures/auth-stack.toml'
+      - 'supabase/tests/fixtures/advisor-entry.ts'
+      - 'supabase/tests/fixtures/advisor-contexts.mjs'
   workflow_dispatch:
 
 permissions:
@@ -34,7 +37,7 @@ jobs:
         with:
           version: '3.1.0'
       - run: npm ci
-      - name: Verify signup, owner access, and recovery
+      - name: Verify accounts, recovery, and Advisor
         env:
           CP_RETAIL_BROWSER_CHANNEL: chrome
         run: |
@@ -43,10 +46,13 @@ jobs:
           mkdir -p "$CP_RETAIL_AUTH_QA_STACK/supabase"
           cp supabase/tests/fixtures/auth-stack.toml "$CP_RETAIL_AUTH_QA_STACK/supabase/config.toml"
           cp -R supabase/migrations "$CP_RETAIL_AUTH_QA_STACK/supabase/"
+          cp -R supabase/functions "$CP_RETAIL_AUTH_QA_STACK/supabase/"
+          mv "$CP_RETAIL_AUTH_QA_STACK/supabase/functions/advisor/index.ts" "$CP_RETAIL_AUTH_QA_STACK/supabase/functions/advisor/production.ts"
+          cp supabase/tests/fixtures/advisor-entry.ts "$CP_RETAIL_AUTH_QA_STACK/supabase/functions/advisor/index.ts"
           trap '(cd "$CP_RETAIL_AUTH_QA_STACK" && supabase stop --no-backup) >/dev/null 2>&1 || true' EXIT
           (
             cd "$CP_RETAIL_AUTH_QA_STACK"
-            if ! supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "$RUNNER_TEMP/cp-retail-auth-start.log" 2>&1; then
+            if ! supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,logflare,vector,supavisor > "$RUNNER_TEMP/cp-retail-auth-start.log" 2>&1; then
               grep -Ei 'error|failed|unknown flag|invalid' "$RUNNER_TEMP/cp-retail-auth-start.log" | tail -n 20
               exit 1
             fi
