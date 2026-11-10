@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import type { Row, Table } from './demo-data';
 import { useCurrentUser } from './user';
 import type { WorkspaceUser } from './user';
-import { supabase } from './supabase-client';
+import { advisorEnabled, supabase } from './supabase-client';
 import { columnFor, projectWorkspaceRow, selectColumns, tableNames, workspaceWrite } from './workspace-fields';
 import type { DatabaseRow } from './workspace-fields';
 import { filtersFor } from './workspace-query';
@@ -98,8 +98,18 @@ function useWorkspaceMutation<T>(from: Table, enabled: boolean, write: (values: 
 }
 
 export function useRecordCreate({ from, fields, onSuccess }: Mutation) {
-  return useWorkspaceMutation(from, from !== 'aiRequests', async (values: Row['fields'], user) => {
+  return useWorkspaceMutation(from, from !== 'aiRequests' || advisorEnabled, async (values: Row['fields'], user) => {
     const payload = workspaceWrite(from, fields, values);
+    if (from === 'aiRequests') {
+      const { data, error } = await supabase!.rpc('queue_advisor_review', {
+        p_name: payload.name,
+        p_source_id: payload.source_id,
+        p_context: payload.context,
+        p_fingerprint: payload.fingerprint,
+      });
+      if (error) throw Error(error.message);
+      return { id: data, fields: values };
+    }
     const { data, error } = await supabase!.from(tableNames[from])
       .insert({ ...payload, owner_id: user.id }).select('id').single();
     if (error?.code === '23505' && from === 'datasets' && payload.csv === 'demo:207') {

@@ -5,7 +5,7 @@ import { NavigationAction } from '@/components/navigation-action';
 import { useNavigation, useNavigationSetting, useTextSetting } from '@/lib/editable-settings';
 import { datasource, q, useRecords, useRecord, useCurrentRecordId, useRecordCreate, useRecordUpdate, useLinkedRecords } from '@/lib/datasource';
 import { useCurrentUser } from '@/lib/user';
-import { cloudEnabled } from '@/lib/supabase-client';
+import { advisorEnabled, cloudEnabled, wakeAdvisorReview as opsWakeCloud } from '@/lib/supabase-client';
 
 const storageLabel = cloudEnabled ? 'Workspace storage' : 'Browser storage';
 const saveDataLabel = cloudEnabled ? 'Save to my account' : 'Save in this browser';
@@ -1068,9 +1068,8 @@ function opsAiWaitState(status, startedAt, now) {
   return {waiting, elapsedSeconds:Math.floor(elapsed / 1000), delayed:waiting && elapsed >= OPS_AI_WAIT_MS};
 }
 
-async function opsWakeCloud(_recordId: string) {}
 const opsAiSelect=q.select({name:'cMQ0c',owner:'jeWoT',sourceId:'H6ZBD',context:'02Rf3',answer:'TSTsb',requestStatus:'cP2Qs',errorMessage:'Vwg10',fingerprint:'KSpPc',createdAt:'zUKuD',answeredAt:'ijPNc'});
-const opsAiCreateFields=q.select({name:'cMQ0c',owner:'jeWoT',sourceId:'H6ZBD',context:'02Rf3',requestStatus:'cP2Qs',fingerprint:'KSpPc'});
+const opsAiCreateFields=q.select({name:'cMQ0c',sourceId:'H6ZBD',context:'02Rf3',fingerprint:'KSpPc'});
 
 async function opsAiAwait(promise:any,ms=8000) {
   let timer:any;
@@ -1151,7 +1150,7 @@ function RecommendationAi({run,email,sourceId,onEvidence,disabled}:any) {
       if(reusable){if(dbText(reusable.fields.requestStatus)!=='Completed')void opsWakeCloud(reusable.id);setLocalId(reusable.id);setNow(Date.now());setPollUntil(Date.now()+OPS_AI_WAIT_MS);return;}
       if(history.hasNextPage){setError('The matching history is too large to check safely. Refresh the page before requesting again.');return;}
       submitted=true;
-      const created=await opsAiAwait(createRequest.mutateAsync({name:'Decision review '+new Date().toISOString(),owner:email,sourceId,context,requestStatus:'e2f1ba8c-0d5e-4ee7-8933-09c308ae0f4b',fingerprint}),10000);
+      const created=await opsAiAwait(createRequest.mutateAsync({name:'Decision review '+new Date().toISOString(),sourceId,context,fingerprint}),10000);
       if(!created?.id){setUncertain(true);setError('The request save could not be confirmed. Check for an answer; another submission is paused to avoid duplicate requests.');return;}
       confirmedId=created.id;void opsWakeCloud(created.id);setLocalId(created.id);setNow(Date.now());setPollUntil(Date.now()+OPS_AI_WAIT_MS);await opsAiAwait(history.refetch());
     }catch{if(submitted&&!confirmedId){setUncertain(true);setError('The request save could not be confirmed. Check the saved review; another submission is paused to avoid duplicate requests.');}else{setError(confirmedId?'The request is saved. Its status could not be loaded; check the saved review later.':'The request history took too long to load. No AI request was sent. Check again before requesting a review.');}}
@@ -1160,7 +1159,7 @@ function RecommendationAi({run,email,sourceId,onEvidence,disabled}:any) {
   const checkAnswer=async()=>{if(pending?.id||localId)void opsWakeCloud(pending?.id||localId);setError('');setNow(Date.now());setPollUntil(Date.now()+OPS_AI_WAIT_MS);try{const refreshed=await opsAiAwait(history.refetch());if(refreshed.error){setError('The review could not be loaded. Try checking again.');return;}if(opsAiMatchingRows(refreshed.data,email,context,fingerprint).length)setUncertain(false);}catch{setError('The status check took too long. Immediate checks and scenario saving remain available.');}};
   return <section className="ops-ai v2-advisor-review" aria-labelledby="ops-ai-title">
     <div className="ops-ai-heading"><div><span className="v2-advisor-name"><Sparkles size={14}/>CP Retail Advisor · before you decide</span><h3 id="ops-ai-title">Decision readiness review</h3></div>{status&&<span className="ops-ai-status" role="status">{status==='Completed'?'AI review saved':waitState.delayed?'AI review delayed':status==='Processing'?'AI is reviewing':status==='Queued'?'Review queued':status==='Failed'?'AI review unavailable':status}</span>}</div>
-    <p className="ops-ai-intro">Check how much demand the proposed action needs and what happens if sales disappoint. Cloud AI is pending migration. The checks below are calculated in this browser.</p>
+    <p className="ops-ai-intro">Check how much demand the proposed action needs and what happens if sales disappoint. {advisorEnabled ? 'The Advisor can prioritise your next checks.' : 'Cloud AI is unavailable in this build.'} The checks below are calculated in this browser.</p>
     {review&&<div className="ops-readiness"><p className="small muted"><strong>Immediate checks · calculated locally</strong> · These concern the rule-selected action and are sensitivity calculations, not AI output or forecasts.</p><div className="ops-readiness-grid">{review.checks.map((item:any)=><article key={item.id}><h4>{item.title}</h4><p>{item.detail}</p><p className="small muted">Next step: {item.action}</p></article>)}</div></div>}
     {contextError?<p className="notice warn" role="status">{contextError}</p>:<>
       {answer?<><div className="ops-ai-answer" aria-live="polite">{answer}</div><p className="small muted">AI ranks the review priorities; all amounts are calculated and checked. {answeredAt?'Saved '+dbDate(answeredAt)+'. ':''}The review is captured with a scenario you save. It does not approve a decision.</p><div className="v2-advisor-foot"><AdvisorVote surface="decision" requestId={completedId} aiAnswered/></div></>:waiting?<div className="ops-ai-wait" role="status">{!waitState.delayed&&polling&&<span className="ops-ai-line"/>}<p>{waitState.delayed?'The AI review has not returned within 30 seconds. Continue with the immediate checks above and save a scenario, or check this same request later. The cloud service can finish while your computer is closed.':(status==='Processing'?'DeepSeek is choosing the review priorities.':'The request is saved and queued for cloud processing.')+' '+waitState.elapsedSeconds+'s elapsed. You can continue using the immediate checks.'}</p>{localId&&!matchingLocal&&<p className="small muted">Request saved; waiting for it to appear in the history.</p>}</div>:status==='Failed'?<div className="notice warn" role="status"><p>{dbText(latest?.fields.errorMessage).slice(0,240)||'The AI review could not finish. Use the immediate checks and check the cloud review status.'} A new request may use the group allowance again.</p></div>:<p className="small muted">DeepSeek receives only numeric assumptions and calculated outcomes. It prioritises validation work; it cannot change the calculations, place orders or approve decisions.</p>}
@@ -2382,14 +2381,11 @@ const datasetCreateFields = q.select({name:'NAtCh', owner:'nHOGb', source:'q2Y8k
 const feedbackCreateFields = q.select({name:'4FQWC', owner:'Vhyro', completed:'GUpre', tasksJson:'fbz4j', clarity:'BWmF4', usefulness:'Txzzg', trust:'migJX', comment:'DuL4m', appVersion:'daLng'});
 const advisorVoteFields = q.select({name:'gmvg6', owner:'ETHAd', surface:'eVte2', vote:'BFDnY', segmentId:'3WoL9', requestId:'8VCpn', aiAnswered:'OGNn3', appVersion:'sd63q'});
 const DATASET_SOURCE = {demo:'demo', upload:'upload'};
-const AI_QUEUED = 'e2f1ba8c-0d5e-4ee7-8933-09c308ae0f4b';
 const DATASET_MAX_CHARS = 100000;
 const APP_VERSION = cloudEnabled ? 'standalone-supabase-2026-11-10' : 'standalone-preview-2026-11-10';
 const PROFILE_TABLE_ROWS = 20;
 
 function emitTestEvent(type: string, extra?: any) { try { window.dispatchEvent(new CustomEvent('cp-test-event', {detail: {...(extra || {}), type}})); } catch {} }
-
-function profileAiEnabled() { return Promise.resolve(false); }
 
 // Group explanation from the cloud AI. A saved answer for the same numbers is reused, so each
 // user asks once per dataset and group; auto asks as soon as the page shows the advice.
@@ -2398,33 +2394,33 @@ function useGroupAi(context: any, sourceId: string, auto: boolean) {
   const email = user?.email ?? '';
   const text = context ? JSON.stringify(context) : '';
   const fingerprint = text ? opsAiFingerprint(text) : '';
-  const [aiReady, setAiReady] = useState(false);
+  const aiReady = advisorEnabled;
   const [requested, setRequested] = useState('');
   const [polls, setPolls] = useState(0);
   const asked = useRef('');
   const history = useRecords({from: ds.aiRequests, select: opsAiSelect, where: q.and(q.text('owner').is(email), q.text('owner').isNotEmpty(), q.text('fingerprint').is(fingerprint)), orderBy: q.desc('createdAt'), count: 20, enabled: !!email && !!text});
   const createRequest = useRecordCreate({from: ds.aiRequests, fields: opsAiCreateFields});
-  useEffect(() => { let live = true; profileAiEnabled().then(ok => { if (live) setAiReady(ok); }); return () => { live = false; }; }, []);
   useEffect(() => { asked.current = ''; setRequested(''); setPolls(0); }, [text]);
   const rows = opsAiMatchingRows(history.data, email, text, fingerprint);
   const done = rows.find((r: any) => dbText(r.fields.requestStatus) === 'Completed' && !!dbText(r.fields.answer).trim());
   const pending = rows.find((r: any) => ['Queued', 'Processing'].includes(dbText(r.fields.requestStatus)));
   const failed = !done && !pending && rows.some((r: any) => dbText(r.fields.requestStatus) === 'Failed');
   const answer = done ? dbText(done.fields.answer).slice(0, 4000) : '';
-  const request = async () => {
-    if (!text || answer || asked.current === text || !aiReady || !createRequest.enabled || !email) return;
-    asked.current = text;
+  const request = async (manual = true) => {
+    if (!text || answer || !aiReady || !createRequest.enabled || !email) return;
     if (pending) { void opsWakeCloud(pending.id); setRequested(text); setPolls(0); return; }
+    if (asked.current === text && !(manual && failed)) return;
+    asked.current = text;
     try {
-      const created: any = await createRequest.mutateAsync({name: 'Group explanation ' + new Date().toISOString(), owner: email, sourceId, context: text, requestStatus: AI_QUEUED, fingerprint});
+      const created: any = await createRequest.mutateAsync({name: 'Group explanation ' + new Date().toISOString(), sourceId, context: text, fingerprint});
       if (created?.id) void opsWakeCloud(created.id);
       setRequested(text); setPolls(0); history.refetch?.();
     } catch { asked.current = ''; }
   };
   // Never retry a failed request automatically: each new request can use the daily allowance.
-  useEffect(() => { if (auto && aiReady && text && history.status === 'success' && !history.isFetching && !answer && !failed) void request(); }, [auto, aiReady, text, history.status, history.isFetching, !!answer, failed]);
-  useEffect(() => { if (!requested || answer || polls >= 12) return; const t = setTimeout(() => { history.refetch?.(); setPolls(p => p + 1); }, 2500); return () => clearTimeout(t); }, [requested, answer, polls]);
-  const status = answer ? 'answered' : requested || pending ? (polls >= 12 ? 'slow' : 'waiting') : failed ? 'failed' : aiReady ? 'idle' : 'off';
+  useEffect(() => { if (auto && aiReady && text && history.status === 'success' && !history.isFetching && !answer && !failed && requested !== text) void request(false); }, [auto, aiReady, text, history.status, history.isFetching, !!answer, failed, requested]);
+  useEffect(() => { if (!requested || answer || failed || polls >= 12) return; const t = setTimeout(() => { history.refetch?.(); setPolls(p => p + 1); }, 2500); return () => clearTimeout(t); }, [requested, answer, failed, polls]);
+  const status = answer ? 'answered' : failed ? 'failed' : requested || pending ? (polls >= 12 ? 'slow' : 'waiting') : aiReady ? 'idle' : 'off';
   return {answer, status, request, requestId: done?.id ?? pending?.id ?? '', aiReady};
 }
 
