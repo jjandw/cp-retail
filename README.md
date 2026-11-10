@@ -42,4 +42,8 @@ Provide an object keyed by `products`, `scenarios`, `decisions`, `datasets`, `ai
 
 Unfinished legacy reviews import as failed so that a historic queue cannot start a new model call. Apply only after checking owner counts and retaining the original export outside the Git repository.
 
-For GitHub collaboration, use this directory as the application root. On Cloudflare Pages, set the build command to `npm run build` and the output directory to `dist`. The app needs the host to serve `index.html` for client routes such as `/workspace`. Use branch previews to verify changes before merging them into the production branch.
+## Cloud hosting
+
+Connect the private GitHub repository to a static host that supports Git branch previews. On Cloudflare Pages, use the repository root, Node.js 24, `npm run build:cloud` and output directory `dist`. Set `NODE_VERSION=24` and the Supabase variables above in the relevant build environments. A cloud build fails if the Supabase configuration is absent and includes directory indexes for workspace and account links.
+
+Use a stable preview origin for end-to-end testing. Allow only the exact verification and recovery URLs in Supabase Auth. Add that origin to the Advisor's allowlist before testing AI. Verify changes in a branch preview before merging the release to the production branch.
