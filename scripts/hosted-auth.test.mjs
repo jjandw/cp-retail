@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { parseEnv } from 'node:util';
 import test from 'node:test';
 import { createClient } from '@supabase/supabase-js';
+import { chromium } from 'playwright';
 
 const stack = process.env.CP_RETAIL_AUTH_QA_STACK;
 const callback = 'http://127.0.0.1:4173';
@@ -54,13 +56,52 @@ async function verifyLink(link, expectedDestination) {
   const access_token = session.get('access_token');
   const refresh_token = session.get('refresh_token');
   assert.ok(access_token && refresh_token, 'Verification returned a local session');
-  return { access_token, refresh_token };
 }
 
-test('local Supabase accepts verified email accounts, isolates workspace rows, and resets passwords', {
+async function openBrowser(t, api, key) {
+  const outDir = join(stack, 'web-dist');
+  const vite = 'node_modules/vite/bin/vite.js';
+  execFileSync(process.execPath, [vite, 'build', '--outDir', outDir], {
+    env: { ...process.env, VITE_SUPABASE_URL: api.origin, VITE_SUPABASE_PUBLISHABLE_KEY: key, VITE_ENABLE_ADVISOR: 'false' },
+    stdio: ['ignore', 'ignore', 'inherit'],
+  });
+  const server = spawn(process.execPath, [vite, 'preview', '--outDir', outDir, '--host', '127.0.0.1', '--port', '4173', '--strictPort'], {
+    stdio: 'ignore',
+  });
+  t.after(() => { server.kill(); });
+  const deadline = Date.now() + 10_000;
+  while (true) {
+    if (await fetch(callback).then(result => result.ok, () => false)) break;
+    assert.ok(server.exitCode === null && Date.now() < deadline, 'Built frontend starts on the fixture port');
+    await delay(200);
+  }
+  const browser = await chromium.launch();
+  t.after(() => browser.close());
+  const context = await browser.newContext();
+  const origins = new Set([callback, api.origin, 'http://127.0.0.1:54321', 'http://localhost:54321']);
+  await context.route('**/*', route => origins.has(new URL(route.request().url()).origin) ? route.continue() : route.abort());
+  const page = await context.newPage();
+  page.setDefaultTimeout(12_000);
+  return page;
+}
+
+async function fillCredentials(page, email, password, submit) {
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: submit, exact: true }).click();
+}
+
+async function signOut(page, email) {
+  await page.goto(callback + '/account');
+  await page.getByText('Signed in as ' + email, { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Log out', exact: true }).click();
+  await page.waitForURL(callback + '/login');
+}
+
+test('the built site verifies email, opens the decision bookmark, resets passwords, and keeps data private', {
   skip: !stack,
-  timeout: 90_000,
-}, async () => {
+  timeout: 120_000,
+}, async t => {
   const status = parseEnv(execFileSync('supabase', ['status', '-o', 'env'], {
     cwd: stack, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
   }));
@@ -71,26 +112,30 @@ test('local Supabase accepts verified email accounts, isolates workspace rows, a
   const client = () => createClient(api.href, key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, flowType: 'implicit' },
   });
+  const page = await openBrowser(t, api, key);
   const password = 'Synthetic!' + randomUUID();
   const seen = new Set();
-  const signup = async label => {
-    const supabase = client();
-    const email = 'cp-retail-' + label + '-' + randomUUID().slice(0, 8) + '@example.com';
-    const signupResult = requireSuccess(await supabase.auth.signUp({
-      email, password, options: { emailRedirectTo: callback + '/workspace' },
-    }), 'Sign up ' + label);
-    assert.equal(signupResult.session, null, 'Sign up requires email verification');
-    const before = await supabase.auth.signInWithPassword({ email, password });
-    assert.equal(before.error?.code, 'email_not_confirmed');
-    await verifyLink(await mailLink(mailpit, email, 'signup', seen), callback + '/workspace');
-    const { user } = requireSuccess(await supabase.auth.signInWithPassword({ email, password }), 'Sign in ' + label);
-    assert.equal(user.id, signupResult.user.id);
-    assert.ok(user.email_confirmed_at, 'Email is marked confirmed');
-    return { supabase, email, user };
-  };
+  const a = { email: 'cp-retail-a-' + randomUUID().slice(0, 8) + '@example.com', supabase: client() };
+  const b = { email: 'cp-retail-b-' + randomUUID().slice(0, 8) + '@example.com', supabase: client() };
 
-  const a = await signup('a');
-  const b = await signup('b');
+  await page.goto(callback + '/sign-up');
+  await fillCredentials(page, a.email, password, 'Create account');
+  await page.getByText('Check your email for a verification link.', { exact: false }).waitFor();
+  const before = await a.supabase.auth.signInWithPassword({ email: a.email, password });
+  assert.equal(before.error?.code, 'email_not_confirmed');
+  await page.goto((await mailLink(mailpit, a.email, 'signup', seen)).href);
+  await page.waitForURL(url => url.origin === callback && url.pathname === '/workspace');
+  await page.getByRole('button', { name: 'My decisions', exact: true }).waitFor();
+  a.user = requireSuccess(await a.supabase.auth.signInWithPassword({ email: a.email, password }), 'Sign in first account').user;
+  assert.ok(a.user.email_confirmed_at, 'First email is marked confirmed');
+
+  const secondSignup = requireSuccess(await b.supabase.auth.signUp({
+    email: b.email, password, options: { emailRedirectTo: callback + '/workspace' },
+  }), 'Sign up second account');
+  assert.equal(secondSignup.session, null, 'Sign up requires email verification');
+  await verifyLink(await mailLink(mailpit, b.email, 'signup', seen), callback + '/workspace');
+  b.user = requireSuccess(await b.supabase.auth.signInWithPassword({ email: b.email, password }), 'Sign in second account').user;
+  assert.equal(b.user.id, secondSignup.user.id);
   assert.notEqual(a.user.id, b.user.id);
   const scenario = {
     name: 'Synthetic promo', product_id: 'demo-snack-drink', reference_price: 95,
@@ -111,13 +156,27 @@ test('local Supabase accepts verified email accounts, isolates workspace rows, a
   const crossOwner = await b.supabase.from('decisions').insert(decision);
   assert.equal(crossOwner.error?.code, '23503', 'Cross-account decision link is denied');
 
-  const recovering = client();
+  await signOut(page, a.email);
+  await page.goto(callback + '/my-decisions');
+  await page.waitForURL(callback + '/login?next=%2Fmy-decisions');
+  await fillCredentials(page, a.email, password, 'Log in');
+  await page.waitForURL(callback + '/my-decisions');
+  await page.getByRole('heading', { name: 'My Decisions', exact: true }).waitFor();
+  await page.getByText(decision.name, { exact: true }).waitFor();
+
+  await signOut(page, a.email);
+  await page.goto(callback + '/forgot-password');
   await delay(1_050); // Respect the fixture's per-account mail interval.
-  requireSuccess(await recovering.auth.resetPasswordForEmail(a.email, { redirectTo: callback + '/reset-password' }), 'Send recovery email');
-  const recoveredSession = await verifyLink(await mailLink(mailpit, a.email, 'recovery', seen), callback + '/reset-password');
-  requireSuccess(await recovering.auth.setSession(recoveredSession), 'Open recovery session');
+  await page.getByLabel('Email', { exact: true }).fill(a.email);
+  await page.getByRole('button', { name: 'Send reset link', exact: true }).click();
+  await page.getByText('If an account uses that email, look for a password reset link.', { exact: true }).waitFor();
+  await page.goto((await mailLink(mailpit, a.email, 'recovery', seen)).href);
+  await page.waitForURL(url => url.origin === callback && url.pathname === '/reset-password');
   const nextPassword = 'Recovered!' + randomUUID();
-  requireSuccess(await recovering.auth.updateUser({ password: nextPassword }), 'Update password');
+  await page.getByLabel('New password', { exact: true }).fill(nextPassword);
+  await page.getByRole('button', { name: 'Save password', exact: true }).click();
+  await page.waitForURL(callback + '/workspace');
+  await page.getByRole('button', { name: 'My decisions', exact: true }).waitFor();
   const wrongPassword = await client().auth.signInWithPassword({ email: a.email, password });
   assert.equal(wrongPassword.error?.code, 'invalid_credentials');
   const signedIn = client();
