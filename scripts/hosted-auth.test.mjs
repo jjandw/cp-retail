@@ -223,7 +223,27 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   await page.getByRole('heading', { name: 'My Decisions', exact: true }).waitFor();
   await page.getByText(decision.name, { exact: true }).waitFor();
 
+  await page.goto(callback + '/old-home');
+  await page.getByRole('heading', { name: 'My Scenarios', exact: true }).waitFor();
+  await page.getByText(scenario.name, { exact: true }).waitFor();
+
+  const legacyDetail = '/item-details?recordId=' + encodeURIComponent(saved.id);
   await signOut(page, a.email);
+  await page.goto(callback + legacyDetail);
+  await page.waitForURL(callback + '/login?next=' + encodeURIComponent(legacyDetail));
+  await fillCredentials(page, a.email, password, 'Log in');
+  await page.waitForURL(callback + legacyDetail);
+  await page.getByRole('heading', { name: scenario.name, exact: true }).waitFor();
+
+  await signOut(page, a.email);
+  await page.goto(callback + legacyDetail);
+  await page.waitForURL(callback + '/login?next=' + encodeURIComponent(legacyDetail));
+  await fillCredentials(page, b.email, password, 'Log in');
+  await page.waitForURL(callback + legacyDetail);
+  await page.getByRole('heading', { name: 'Scenario unavailable', exact: true }).waitFor();
+  assert.equal(await page.getByText(scenario.name, { exact: true }).count(), 0);
+
+  await signOut(page, b.email);
   await page.goto(callback + '/forgot-password');
   await delay(1_050); // Respect the fixture's per-account mail interval.
   await page.getByLabel('Email', { exact: true }).fill(a.email);

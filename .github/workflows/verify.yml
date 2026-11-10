@@ -49,7 +49,7 @@ jobs:
           grep -F 'A cloud build requires an HTTPS Supabase URL' "$RUNNER_TEMP/invalid-cloud-config.log"
           export VITE_SUPABASE_URL=https://cp-retail-ci.supabase.co
           npm run build:cloud
-          for route in welcome workspace pixso-preview my-decisions login sign-up forgot-password reset-password account; do
+          for route in welcome workspace pixso-preview my-decisions old-home item-details login sign-up forgot-password reset-password account; do
             cmp dist/index.html "dist/$route/index.html"
           done
       - run: node --test supabase/tests/advisor.test.mjs scripts/workspace-routes.test.mjs

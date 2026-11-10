@@ -1,5 +1,11 @@
-export const workspacePaths = ['/workspace', '/pixso-preview', '/my-decisions'];
+const scenarioPaths = ['/old-home', '/item-details'];
+export const workspacePaths = ['/workspace', '/pixso-preview', '/my-decisions', ...scenarioPaths];
 export const staticPaths = ['/welcome', ...workspacePaths, '/login', '/sign-up', '/forgot-password', '/reset-password', '/account'];
+
+export function workspaceInitialView(path) {
+  if (path === '/my-decisions') return 'my-decisions';
+  if (scenarioPaths.includes(path)) return 'my-scenarios';
+}
 
 export function workspaceReturnPath(search, origin) {
   const next = new URLSearchParams(search).get('next');
