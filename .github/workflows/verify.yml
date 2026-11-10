@@ -1,0 +1,69 @@
+name: Verify standalone site
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'codex/supabase-migration']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: local-ci
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Verify the demo and hosted builds
+        run: |
+          npm run build
+          if npm run build:cloud > "$RUNNER_TEMP/missing-cloud-config.log" 2>&1; then
+            echo 'Cloud build accepted missing Supabase configuration.'
+            exit 1
+          fi
+          grep -F 'A cloud build requires the Supabase URL and publishable key.' "$RUNNER_TEMP/missing-cloud-config.log"
+          export VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_fixture
+          if VITE_SUPABASE_URL=invalid-url npm run build:cloud > "$RUNNER_TEMP/invalid-cloud-config.log" 2>&1; then
+            echo 'Cloud build accepted an invalid Supabase URL.'
+            exit 1
+          fi
+          grep -F 'A cloud build requires an HTTPS Supabase URL' "$RUNNER_TEMP/invalid-cloud-config.log"
+          export VITE_SUPABASE_URL=https://cp-retail-ci.supabase.co
+          npm run build:cloud
+          for route in welcome workspace pixso-preview login sign-up forgot-password reset-password account; do
+            cmp dist/index.html "dist/$route/index.html"
+          done
+      - run: node --test supabase/tests/advisor.test.mjs
+      - name: Verify database policies and historical import
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          PGUSER: postgres
+          PGDATABASE: postgres
+          PGPASSWORD: local-ci
+          CP_RETAIL_LOCAL_HISTORY_QA: '1'
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/auth.sql
+          for sql in supabase/migrations/*.sql supabase/tests/*_policies.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$sql"
+          done
+          node --test scripts/softr-history.test.mjs

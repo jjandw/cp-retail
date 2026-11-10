@@ -20,7 +20,13 @@ export default defineConfig(({ mode }) => {
   const key = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
   if (Boolean(url) !== Boolean(key)) throw Error('Set both Supabase URL and publishable key to enable cloud accounts.');
   if (key && !publishable(key)) throw Error('Use a Supabase publishable or legacy anon key in the frontend.');
-  if (mode === 'cloud' && !url) throw Error('A cloud build requires the Supabase URL and publishable key.');
+  if (mode === 'cloud') {
+    if (!url) throw Error('A cloud build requires the Supabase URL and publishable key.');
+    const endpoint = URL.canParse(url) ? new URL(url) : null;
+    if (!endpoint || endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+      throw Error('A cloud build requires an HTTPS Supabase URL without credentials, query, or fragment.');
+    }
+  }
   return {
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     plugins: [{
