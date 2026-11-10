@@ -1,0 +1,22 @@
+project_id = "cp-retail-auth-qa"
+
+[api]
+port = 54321
+
+[db]
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[auth]
+site_url = "http://127.0.0.1:4173"
+additional_redirect_urls = ["http://127.0.0.1:4173/workspace", "http://127.0.0.1:4173/reset-password"]
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1s"
+
+[local_smtp]
+enabled = true
+port = 54324

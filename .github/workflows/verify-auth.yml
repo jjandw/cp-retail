@@ -1,0 +1,49 @@
+name: Verify Supabase account flow
+
+on:
+  push:
+    branches: [main, 'codex/supabase-migration']
+    paths:
+      - '.github/workflows/verify-auth.yml'
+      - 'package-lock.json'
+      - 'scripts/hosted-auth.test.mjs'
+      - 'src/lib/supabase-client.ts'
+      - 'src/screens/CloudAccount.tsx'
+      - 'supabase/migrations/**'
+      - 'supabase/tests/fixtures/auth-stack.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  account-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: '3.1.0'
+      - run: npm ci
+      - name: Verify signup, owner access, and recovery
+        run: |
+          export CP_RETAIL_AUTH_QA_STACK="$RUNNER_TEMP/cp-retail-auth-qa"
+          mkdir -p "$CP_RETAIL_AUTH_QA_STACK/supabase"
+          cp supabase/tests/fixtures/auth-stack.toml "$CP_RETAIL_AUTH_QA_STACK/supabase/config.toml"
+          cp -R supabase/migrations "$CP_RETAIL_AUTH_QA_STACK/supabase/"
+          trap '(cd "$CP_RETAIL_AUTH_QA_STACK" && supabase stop --no-backup) >/dev/null 2>&1 || true' EXIT
+          (
+            cd "$CP_RETAIL_AUTH_QA_STACK"
+            if ! supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "$RUNNER_TEMP/cp-retail-auth-start.log" 2>&1; then
+              grep -Ei 'error|failed|unknown flag|invalid' "$RUNNER_TEMP/cp-retail-auth-start.log" | tail -n 20
+              exit 1
+            fi
+          )
+          node --test scripts/hosted-auth.test.mjs
