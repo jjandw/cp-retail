@@ -1,0 +1,35 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #223b36;
+  background: #f6f7f3;
+}
+
+body { margin: 0; }
+
+.preview-entry {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  padding: 24px;
+  color: #eefbf4;
+  background: #07110f;
+}
+
+.preview-entry-card {
+  width: min(100%, 560px);
+  box-sizing: border-box;
+  padding: clamp(24px, 7vw, 48px);
+  border: 1px solid #30554b;
+  border-radius: 18px;
+  background: #10201c;
+}
+
+.preview-entry-card a { color: inherit; }
+.preview-brand { display: inline-flex; gap: 12px; align-items: center; font-weight: 650; text-decoration: none; }
+.preview-kicker { margin-top: 32px; text-transform: uppercase; letter-spacing: .14em; font-size: 12px; color: #9ee1cc; }
+.preview-entry-card h1 { margin: 10px 0 18px; font-size: clamp(28px, 7vw, 42px); line-height: 1.1; }
+.preview-entry-card p { line-height: 1.6; }
+.preview-actions { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-top: 24px; }
+.preview-actions .preview-primary { border-radius: 999px; padding: 12px 17px; background: #b0f1d7; color: #112b24; text-decoration: none; font-weight: 650; }
+.preview-entry-card a:focus-visible { outline: 2px solid #a9edd5; outline-offset: 4px; }

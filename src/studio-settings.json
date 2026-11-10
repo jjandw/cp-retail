@@ -1,0 +1,61 @@
+{
+  "landing-login": {
+    "action": "OPEN_PAGE",
+    "destination": "/login",
+    "openIn": "SELF"
+  },
+  "landing-signup": {
+    "action": "OPEN_PAGE",
+    "destination": "/sign-up",
+    "openIn": "SELF"
+  },
+  "retail-brand": "CP Retail",
+  "workspace-home": {
+    "action": "OPEN_PAGE",
+    "destination": "/pixso-preview",
+    "openIn": "SELF"
+  },
+  "saved-scenario-link": {
+    "action": "OPEN_PAGE",
+    "destination": "/pixso-preview",
+    "openIn": "SELF"
+  },
+  "saved-scenario-row-link": {
+    "action": "OPEN_PAGE",
+    "destination": "/pixso-preview",
+    "openIn": "SELF"
+  },
+  "saved-scenarios-title": "My Scenarios",
+  "ops-saved-scenario-link": {
+    "action": "OPEN_PAGE",
+    "destination": "/pixso-preview",
+    "openIn": "SELF"
+  },
+  "ops-recommendations-title": "Operational recommendations",
+  "real-signup": {
+    "action": "OPEN_PAGE",
+    "destination": "/sign-up",
+    "openIn": "SELF"
+  },
+  "real-password-reset": {
+    "action": "OPEN_PAGE",
+    "destination": "/forgot-password",
+    "openIn": "SELF"
+  },
+  "real-account": {
+    "action": "OPEN_PAGE",
+    "destination": "/account",
+    "openIn": "SELF"
+  },
+  "customer-profile-title": "Customer profiles",
+  "real-login": {
+    "action": "OPEN_PAGE",
+    "destination": "/login",
+    "openIn": "SELF"
+  },
+  "existing-scenarios": {
+    "action": "OPEN_PAGE",
+    "destination": "/",
+    "openIn": "SELF"
+  }
+}

@@ -1,0 +1,37 @@
+import React, { lazy, Suspense } from 'react';
+import { createRoot } from 'react-dom/client';
+import { demoUser, PreviewUser } from './lib/user';
+import './shell.css';
+
+const Landing = lazy(() => import('./screens/Landing'));
+const Workspace = lazy(() => import('./screens/Workspace'));
+const path = window.location.pathname.replace(/\/$/, '') || '/';
+
+function PreviewEntry({ account = false, missing = false }: { account?: boolean; missing?: boolean }) {
+  return <main className="preview-entry">
+    <div className="preview-entry-card">
+      <a className="preview-brand" href="/"><img src="/cp-retail.svg" alt="" width="36" height="36" /> CP Retail</a>
+      <p className="preview-kicker">Independent preview</p>
+      <h1>{account ? 'Demo workspace account' : missing ? 'Page not found' : 'Try CP Retail'}</h1>
+      <p>Explore the sample store, check an offer, and save a decision. Use sample or synthetic data.</p>
+      <p>Records are saved in this browser. Shared accounts and cloud AI are pending migration.</p>
+      <div className="preview-actions">
+        <a className="preview-primary" href="/workspace">{account ? 'Return to workspace' : 'Open demo workspace'}</a>
+        <a href="/">Back to home</a>
+      </div>
+    </div>
+  </main>;
+}
+
+function App() {
+  if (path === '/' || path === '/welcome') return <Landing />;
+  if (path === '/workspace' || path === '/pixso-preview') {
+    return <PreviewUser.Provider value={demoUser}><Workspace /></PreviewUser.Provider>;
+  }
+  return <PreviewEntry account={path === '/account'}
+    missing={!['/login', '/sign-up', '/forgot-password', '/reset-password', '/account'].includes(path)} />;
+}
+
+createRoot(document.getElementById('root')!).render(
+  <Suspense fallback={<main className="preview-entry" role="status">Loading CP Retail…</main>}><App /></Suspense>,
+);
