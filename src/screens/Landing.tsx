@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { NavigationAction } from '@/components/navigation-action';
 import { useNavigation, useNavigationSetting, useTextSetting } from '@/lib/editable-settings';
 import { useCurrentUser } from '@/lib/user';
+import { cloudEnabled } from '@/lib/supabase-client';
 
 function BrandMark({size=34,className=''}:{size?:number;className?:string}) {
   return <svg className={'brand-logo '+className} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="15" fill="#21675D"/><path d="M19 24h26l-2.6 23.2a3 3 0 0 1-3 2.8H24.6a3 3 0 0 1-3-2.8z" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinejoin="round"/><path d="M25.5 24v-3a6.5 6.5 0 0 1 13 0v3" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round"/><path d="M25.6 36.4l4.6 4.6 8.6-9" fill="none" stroke="#DCECE6" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"/></svg>;
@@ -78,13 +79,13 @@ function Landing({brand}: {brand: string}) {
     return () => { io.disconnect(); scroller.removeEventListener('scroll', onScroll); };
   }, []);
   return <div className="cp-landing" ref={rootRef}><style>{landingCss}</style>
-    <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandMark size={26}/>{brand}</span><nav className="l-row l-links"><a href="#how">How it works</a><NavigationAction navigation={loginLink} className="l-link">Preview access</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">Try demo</NavigationAction></nav></div></header>
+    <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandMark size={26}/>{brand}</span><nav className="l-row l-links"><a href="#how">How it works</a><NavigationAction navigation={loginLink} className="l-link">{cloudEnabled ? 'Log in' : 'Preview access'}</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">{cloudEnabled ? 'Get started' : 'Try demo'}</NavigationAction></nav></div></header>
     <section className="l-hero"><div className="l-glow" ref={glowRef} aria-hidden="true"/><div className="l-wrap">
       <p className="l-eyebrow lv">For convenience-store managers</p>
       <h1 className="lv d1">Know who to win back.<br/>Before you discount.</h1>
       <p className="l-lead lv d2">See which customers are drifting away, check whether an offer pays for itself, and save the decision — in three steps.</p>
       <img className="l-hero-img lv d2" src="/studio-media/478a380e-df54-42c2-a1aa-116f4493ef46.jpeg" alt="Convenience store" loading="lazy"/>
-      <div className="l-cta lv d3"><NavigationAction navigation={signupLink} className="l-pill l-big">Try demo</NavigationAction><a href="#how" className="l-more">See how it works ›</a></div>
+      <div className="l-cta lv d3"><NavigationAction navigation={signupLink} className="l-pill l-big">{cloudEnabled ? 'Get started' : 'Try demo'}</NavigationAction><a href="#how" className="l-more">See how it works ›</a></div>
       <div className="l-glass lv d4" aria-label="Example result"><p className="l-small">Return offer · Cooling regulars · {LANDING_DISCOUNT}% off</p><p className="l-verdict">Pays back</p><p className="l-small">Break-even return rate <b>{landingBreakEven(20)}%</b> · you expect 45%</p><div className="l-bar"><i style={{width: landingBreakEven(20) + '%'}}/></div></div>
     </div></section>
     <section className="l-feat" id="how"><div className="l-wrap">
@@ -106,7 +107,7 @@ function Landing({brand}: {brand: string}) {
       <p className="l-lead lv d2">Every figure is calculated by rules you can read. AI only points to the assumption to verify first — and you make the call.</p>
       <img className="l-feat-img lv d3" src="/studio-media/08b530f6-ddaf-4aa4-b41e-6542411fd842.jpeg" alt="Decide and verify" loading="lazy"/>
       <LandingDevice label="A saved pending decision"><LandingDecisionMock/></LandingDevice>
-      <div className="l-cta lv d3"><NavigationAction navigation={signupLink} className="l-pill l-big">Open demo workspace</NavigationAction><NavigationAction navigation={loginLink} className="l-more">About this preview ›</NavigationAction></div>
+      <div className="l-cta lv d3"><NavigationAction navigation={signupLink} className="l-pill l-big">{cloudEnabled ? 'Create your workspace' : 'Open demo workspace'}</NavigationAction><NavigationAction navigation={loginLink} className="l-more">{cloudEnabled ? 'I already have an account ›' : 'About this preview ›'}</NavigationAction></div>
     </div></section>
     <section className="l-feat"><div className="l-wrap">
       <p className="l-eyebrow lv">Win back</p><h2 className="lv d1">Bring your regulars home.</h2>

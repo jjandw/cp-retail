@@ -33,3 +33,31 @@ body { margin: 0; }
 .preview-actions { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-top: 24px; }
 .preview-actions .preview-primary { border-radius: 999px; padding: 12px 17px; background: #b0f1d7; color: #112b24; text-decoration: none; font-weight: 650; }
 .preview-entry-card a:focus-visible { outline: 2px solid #a9edd5; outline-offset: 4px; }
+
+.account-form { display: grid; gap: 16px; margin-block: 24px; }
+.account-form label { display: grid; gap: 6px; font-size: .95rem; }
+.account-form input {
+  padding: 11px 12px;
+  border: 1px solid #52766a;
+  border-radius: 8px;
+  background: #07110f;
+  color: inherit;
+  font: inherit;
+}
+.account-form button, .preview-actions button {
+  width: fit-content;
+  padding: 12px 17px;
+  border: 1px solid #8dd3b9;
+  border-radius: 999px;
+  background: #b0f1d7;
+  color: #112b24;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-form button:disabled, .preview-actions button:disabled { cursor: wait; opacity: .7; }
+.account-form input:focus-visible, .account-form button:focus-visible, .preview-actions button:focus-visible {
+  outline: 2px solid #a9edd5;
+  outline-offset: 4px;
+}
+.account-error { color: #ffbdb8; }
