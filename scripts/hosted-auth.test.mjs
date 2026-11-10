@@ -112,7 +112,7 @@ async function savedAdvisorAnswer(owner, source, version) {
 async function verifyAdvisorScreens(page, owner, scenarioId) {
   await page.getByRole('button', { name: 'Open demo store', exact: true }).click();
   // Use a different group from the gateway test so both paths generate their own review.
-  await page.getByLabel('Planning segment', { exact: true }).selectOption('recent');
+  await page.getByRole('button', { name: /^Recent customers/ }).click();
   const groupCard = page.getByRole('region', { name: 'CP Retail Advisor', exact: true });
   await groupCard.getByRole('button', { name: 'Explain this group', exact: true }).click();
   await groupCard.getByText('AI insight added', { exact: true }).waitFor({ timeout: 25_000 });
@@ -122,7 +122,7 @@ async function verifyAdvisorScreens(page, owner, scenarioId) {
   await groupCard.getByRole('listitem').filter({ hasText: firstCheck }).waitFor();
 
   await page.getByRole('button', { name: 'Recommendations', exact: true }).click();
-  await page.getByLabel('Starting scenario *', { exact: true }).selectOption(scenarioId);
+  await page.getByRole('combobox', { name: /^Starting scenario/ }).selectOption(scenarioId);
   await page.locator('form').getByRole('button', { name: 'Compare actions', exact: true }).click();
   const decisionCard = page.getByRole('region', { name: 'Decision readiness review', exact: true });
   await decisionCard.getByRole('button', { name: 'Ask AI: what should I verify first?', exact: true }).click();
