@@ -110,17 +110,6 @@ async function verifyAdvisor({ api, key, owner, other, source, page }) {
     },
     body: JSON.stringify({ recordId }),
   });
-  const preflight = await fetch(url, {
-    method: 'OPTIONS',
-    headers: {
-      Origin: callback,
-      'Access-Control-Request-Method': 'POST',
-      'Access-Control-Request-Headers': 'apikey,authorization,content-type,x-client-info',
-    },
-  });
-  assert.equal(preflight.status, 204);
-  // The local gateway can answer the preflight. The actual handler must still check Origin.
-  assert.ok(['*', callback].includes(preflight.headers.get('Access-Control-Allow-Origin')));
   const ownerToken = requireSuccess(await owner.auth.getSession(), 'Read first test session').session.access_token;
   const otherToken = requireSuccess(await other.auth.getSession(), 'Read second test session').session.access_token;
   const contexts = [
@@ -135,6 +124,7 @@ async function verifyAdvisor({ api, key, owner, other, source, page }) {
     assert.equal((await call(recordId)).status, 401, 'Missing user token is denied');
     assert.equal((await call(recordId, otherToken)).status, 404, 'Other account cannot wake the review');
     assert.equal((await call(recordId, ownerToken, 'http://127.0.0.1:4189')).status, 403, 'Different browser origin is denied');
+    // Chromium negotiates the gateway's preflight as part of the actual browser request.
     const wakeFromBrowser = page.evaluate(async ({ endpoint, publicKey, token, id }) => {
       const response = await fetch(endpoint, {
         method: 'POST',

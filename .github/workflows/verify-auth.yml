@@ -57,4 +57,7 @@ jobs:
               exit 1
             fi
           )
-          node --test scripts/hosted-auth.test.mjs
+          if ! node --test scripts/hosted-auth.test.mjs; then
+            docker logs supabase_edge_runtime_cp-retail-auth-qa 2>&1 | tail -n 25 || true
+            exit 1
+          fi
