@@ -75,7 +75,7 @@ async function openBrowser(t, api, key) {
     assert.ok(server.exitCode === null && Date.now() < deadline, 'Built frontend starts on the fixture port');
     await delay(200);
   }
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: process.env.CP_RETAIL_BROWSER_CHANNEL || undefined });
   t.after(() => browser.close());
   const context = await browser.newContext();
   const origins = new Set([callback, api.origin, 'http://127.0.0.1:54321', 'http://localhost:54321']);
