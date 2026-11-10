@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { decodeSoftrArchive } from './softr-archive.mjs';
 
 function text(value, min = 1, max = Infinity) {
   if (typeof value !== 'string' || value.trim().length < min || value.length > max || value.includes('\0')) {
@@ -193,7 +194,7 @@ export function summarizeSoftrHistory(plan) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const snapshot = JSON.parse(readFileSync(0, 'utf8'));
+    const snapshot = decodeSoftrArchive(JSON.parse(readFileSync(0, 'utf8')));
     console.log(JSON.stringify(summarizeSoftrHistory(prepareSoftrHistory(snapshot)), null, 2));
   } catch {
     console.error('The Softr export is incomplete or invalid.');

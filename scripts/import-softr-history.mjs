@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { decodeSoftrArchive } from './softr-archive.mjs';
 import { prepareSoftrHistory, summarizeSoftrHistory } from './softr-history.mjs';
 
 function run() {
@@ -12,7 +13,7 @@ function run() {
   if (!process.env.PGHOST || !process.env.PGDATABASE || !process.env.PGUSER) {
     throw Error('Set PGHOST, PGDATABASE and PGUSER for the intended destination.');
   }
-  const snapshot = JSON.parse(readFileSync(0, 'utf8'));
+  const snapshot = decodeSoftrArchive(JSON.parse(readFileSync(0, 'utf8')));
   const plan = prepareSoftrHistory(snapshot);
   if (apply && plan.quarantine.length && !quarantineRetained) {
     throw Error('Retain the original export in approved private storage before applying a plan with quarantined records.');

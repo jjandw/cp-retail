@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { decodeSoftrArchive } from './softr-archive.mjs';
 import { prepareSoftrHistory, summarizeSoftrHistory } from './softr-history.mjs';
 
 const timestamp = '2026-11-10T00:00:00.000Z';
@@ -35,6 +38,95 @@ const snapshot = {
     ETHAd: alice, gmvg6: 'Old vote', eVte2: 'decision', BFDnY: 'up', '8VCpn': 'legacy-review', OGNn3: false, sd63q: 'legacy',
   })],
 };
+
+const archiveTableIds = {
+  products: 'yBg8PjqD7zRU7J', scenarios: 'd9JdBdtgBZvXBv', decisions: 'vBQOXSAciKnZFw',
+  datasets: 'xFjXoMY8AEM85y', aiRequests: 'sYjhtglIOT61Tv', testFeedback: 'GrPIYH8dfuu2KE',
+  advisorVotes: 'OpxJ1wWvMPbC9m',
+};
+
+function archivePage(data, offset, total) {
+  const body = Buffer.from(JSON.stringify({ data, metadata: { offset, limit: 1, total } }));
+  return {
+    offset, count: data.length,
+    sha256: createHash('sha256').update(body).digest('hex'),
+    responseBase64: body.toString('base64'),
+  };
+}
+
+function archiveFixture(records = snapshot) {
+  return {
+    format: 'cp-retail-softr-record-pages-v1',
+    databaseId: '46d15e55-e03a-437d-bd06-8bdc35b79943',
+    startedAtUtc: timestamp,
+    tables: Object.fromEntries(Object.entries(archiveTableIds).map(([name, tableId]) => {
+      const rows = records[name];
+      const pages = rows.length ? rows.map((row, offset) => archivePage([row], offset, rows.length)) : [archivePage([], 0, 0)];
+      return [name, { tableId, count: rows.length, pages }];
+    })),
+    completedAtUtc: timestamp,
+  };
+}
+
+test('a page archive preserves raw fields, record order and empty tables', () => {
+  const historical = {
+    ...snapshot, advisorVotes: [],
+    products: [{ ...snapshot.products[0], tableId: archiveTableIds.products, updatedAt: '2026-11-10T08:00:00+08:00', fields: {
+      ...snapshot.products[0].fields, extra: { '合成数据': '2026-11-10T08:00:00+08:00', numeric: 62.51 },
+    } }],
+  };
+  assert.deepEqual(decodeSoftrArchive(archiveFixture(historical)), historical);
+  assert.equal(decodeSoftrArchive(snapshot), snapshot);
+});
+
+test('archive identity, pagination and byte integrity failures are rejected', () => {
+  const invalid = [
+    archive => { archive.databaseId = 'wrong-database'; },
+    archive => { archive.tables.scenarios.tableId = archiveTableIds.products; },
+    archive => { delete archive.tables.products; },
+    archive => { archive.tables.scenarios.pages.reverse(); },
+    archive => { archive.tables.scenarios.pages.pop(); },
+    archive => { archive.tables.products.pages[0].count = 0; },
+    archive => { archive.tables.products.pages[0].sha256 = '0'.repeat(64); },
+    archive => { archive.tables.products.pages[0].responseBase64 += '\n'; },
+    archive => { archive.tables.products.pages[0] = archivePage(snapshot.products, 0, 2); },
+    archive => { archive.tables.products.pages[0] = archivePage([{ ...snapshot.products[0], tableId: archiveTableIds.datasets }], 0, 1); },
+    archive => { archive.tables.scenarios.pages[1] = archivePage([snapshot.scenarios[0]], 1, 3); },
+  ];
+  for (const mutate of invalid) {
+    const archive = archiveFixture();
+    mutate(archive);
+    assert.throws(() => decodeSoftrArchive(archive), /^Error: The Softr archive is incomplete or invalid\.$/);
+  }
+});
+
+test('both stdin commands accept an archive without printing source data', () => {
+  const archive = archiveFixture();
+  const validator = fileURLToPath(new URL('./softr-history.mjs', import.meta.url));
+  const summary = spawnSync(process.execPath, [validator], { encoding: 'utf8', input: JSON.stringify(archive) });
+  assert.equal(summary.status, 0, summary.stderr);
+  assert.deepEqual(JSON.parse(summary.stdout), summarizeSoftrHistory(prepareSoftrHistory(snapshot)));
+
+  const importer = fileURLToPath(new URL('./import-softr-history.mjs', import.meta.url));
+  const runImport = () => spawnSync(process.execPath, [importer, '--apply'], {
+    encoding: 'utf8', input: JSON.stringify(archive),
+    env: { ...process.env, PGHOST: 'unused.invalid', PGDATABASE: 'unused', PGUSER: 'unused' },
+  });
+  const gated = runImport();
+  assert.equal(gated.status, 1);
+  assert.equal(gated.stdout, '');
+  assert.equal(gated.stderr.trim(), 'Retain the original export in approved private storage before applying a plan with quarantined records.');
+
+  // Give the broken JSON the correct digest to test the parser's redacted diagnostic.
+  const invalidJson = Buffer.from('{\n"unparseable-private-fixture"');
+  Object.assign(archive.tables.products.pages[0], {
+    sha256: createHash('sha256').update(invalidJson).digest('hex'), responseBase64: invalidJson.toString('base64'),
+  });
+  const invalid = runImport();
+  assert.equal(invalid.status, 1);
+  assert.equal(invalid.stdout, '');
+  assert.equal(invalid.stderr.trim(), 'The Softr archive is incomplete or invalid.');
+});
 
 test('historical links, unknown costs, dates and owner isolation survive conversion', () => {
   const plan = prepareSoftrHistory(snapshot);

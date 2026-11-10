@@ -42,6 +42,14 @@ Provide an object keyed by `products`, `scenarios`, `decisions`, `datasets`, `ai
 
 Unfinished legacy reviews import as failed so that a historic queue cannot start a new model call. Apply only after checking owner counts and retaining the original export outside the Git repository.
 
+For a CP Retail Windows DPAPI backup, use the same Windows user and the SHA-256 from its backup receipt. This command verifies and decrypts the archive in memory and prints the count-only validation report.
+
+```powershell
+pwsh -File scripts/restore-softr-history.ps1 -Archive <backup.dpapi> -ExpectedSha256 <sha256>
+```
+
+Use `-Mode DryRun` with the intended Postgres connection settings for a rolled-back import, or `-Mode Apply` after production approval. If the plan has quarantined records, `-Mode Apply` also requires `-QuarantineRetained` once the private source archive is verified.
+
 ## Cloud hosting
 
 Connect the private GitHub repository to a static host that supports Git branch previews. On Cloudflare Pages, use the repository root, Node.js 24, `npm run build:cloud` and output directory `dist`. Set `NODE_VERSION=24` and the Supabase variables above in the relevant build environments. A cloud build fails if the Supabase configuration is absent and includes directory indexes for workspace and account links.
