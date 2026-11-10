@@ -34,7 +34,6 @@ export function CloudAccount({ email }: { email: string }) {
       setBusy(false);
       return;
     }
-    window.location.replace('/login');
   };
   return <AccountCard title="Account settings">
     <p>Signed in as {email}</p>
@@ -77,12 +76,10 @@ export function CloudAuthForm({ mode, recovery }: { mode: Mode; recovery: boolea
           emailRedirectTo: window.location.origin + '/workspace',
         } });
         if (result.error) throw result.error;
-        if (result.data.session) window.location.replace('/workspace');
-        else setNotice('Check your email for a verification link. You can then log in.');
+        if (!result.data.session) setNotice('Check your email for a verification link. You can then log in.');
       } else if (mode === 'login') {
         const result = await auth.signInWithPassword({ email, password });
         if (result.error) throw result.error;
-        window.location.replace(workspaceDestination());
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'The account service could not complete this request.');

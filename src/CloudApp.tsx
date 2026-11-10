@@ -47,7 +47,8 @@ export default function CloudApp({ path, landing, workspace }: {
   }
   if (path === '/account') return user ? <CloudAccount email={user.email} /> : <Redirect to="/login" />;
   if (path === '/login' || path === '/sign-up') {
-    return user ? <Redirect to={workspaceDestination()} /> : <CloudAuthForm mode={path === '/login' ? 'login' : 'sign-up'} recovery={false} />;
+    return user ? <Redirect to={path === '/login' ? workspaceDestination() : '/workspace'} /> :
+      <CloudAuthForm mode={path === '/login' ? 'login' : 'sign-up'} recovery={false} />;
   }
   if (path === '/reset-password') return <CloudAuthForm mode="reset-password" recovery={recovery && !!user} />;
   if (path === '/forgot-password') return <CloudAuthForm mode="forgot-password" recovery={false} />;
