@@ -100,7 +100,7 @@ async function signOut(page, email) {
   await page.waitForURL(callback + '/login');
 }
 
-async function verifyAdvisor({ api, key, owner, other, source }) {
+async function verifyAdvisor({ api, key, owner, other, source, page }) {
   const url = new URL('/functions/v1/advisor', api);
   const call = (recordId, token, origin = callback) => fetch(url, {
     method: 'POST',
@@ -110,9 +110,17 @@ async function verifyAdvisor({ api, key, owner, other, source }) {
     },
     body: JSON.stringify({ recordId }),
   });
-  const preflight = await fetch(url, { method: 'OPTIONS', headers: { Origin: callback } });
+  const preflight = await fetch(url, {
+    method: 'OPTIONS',
+    headers: {
+      Origin: callback,
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'apikey,authorization,content-type,x-client-info',
+    },
+  });
   assert.equal(preflight.status, 204);
-  assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), callback);
+  // The local gateway can answer the preflight. The actual handler must still check Origin.
+  assert.ok(['*', callback].includes(preflight.headers.get('Access-Control-Allow-Origin')));
   const ownerToken = requireSuccess(await owner.auth.getSession(), 'Read first test session').session.access_token;
   const otherToken = requireSuccess(await other.auth.getSession(), 'Read second test session').session.access_token;
   const contexts = [
@@ -127,8 +135,19 @@ async function verifyAdvisor({ api, key, owner, other, source }) {
     assert.equal((await call(recordId)).status, 401, 'Missing user token is denied');
     assert.equal((await call(recordId, otherToken)).status, 404, 'Other account cannot wake the review');
     assert.equal((await call(recordId, ownerToken, 'http://127.0.0.1:4189')).status, 403, 'Different browser origin is denied');
-    const responses = await Promise.all([call(recordId, ownerToken), call(recordId, ownerToken)]);
-    for (const response of responses) assert.equal(response.status, 202, 'Owner can wake the review');
+    const wakeFromBrowser = page.evaluate(async ({ endpoint, publicKey, token, id }) => {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          apikey: publicKey, Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json', 'X-Client-Info': 'cp-retail-ci',
+        },
+        body: JSON.stringify({ recordId: id }),
+      });
+      return response.status;
+    }, { endpoint: url.href, publicKey: key, token: ownerToken, id: recordId });
+    const responses = await Promise.all([wakeFromBrowser, call(recordId, ownerToken).then(response => response.status)]);
+    for (const status of responses) assert.equal(status, 202, 'Owner can wake the review');
 
     const deadline = Date.now() + 15_000;
     while (true) {
@@ -235,6 +254,6 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   const retained = requireSuccess(await signedIn.from('scenarios').select('id').eq('id', saved.id).single(), 'Read scenario after recovery');
   assert.equal(retained.id, saved.id);
   await t.test('the real Edge handler saves both Advisor answers for the verified owner', async () => {
-    await verifyAdvisor({ api, key, owner: signedIn, other: b.supabase, source: saved.id });
+    await verifyAdvisor({ api, key, owner: signedIn, other: b.supabase, source: saved.id, page });
   });
 });
