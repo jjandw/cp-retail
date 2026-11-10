@@ -46,7 +46,7 @@ jobs:
               exit 1
             fi
           )
-          if ! node --test scripts/hosted-auth.test.mjs; then
+          if ! node --test --test-concurrency=1 scripts/hosted-auth.test.mjs scripts/dataset-settings.browser.test.mjs scripts/workspace-navigation.browser.test.mjs; then
             docker logs supabase_edge_runtime_cp-retail-auth-qa 2>&1 | tail -n 25 || true
             exit 1
           fi

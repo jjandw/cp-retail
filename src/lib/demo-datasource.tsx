@@ -68,7 +68,10 @@ function useMutation<T>(enabled: boolean, execute: (payload: T) => Promise<Row>,
 
 export function useRecordCreate({ from, fields, onSuccess }: Mutation) {
   const user = useCurrentUser();
-  return useMutation(!!user && from !== 'aiRequests', (values: Row['fields']) => createDemoRow(from, fields, values), onSuccess);
+  return useMutation(!!user && from !== 'aiRequests', async (values: Row['fields']) => {
+    const row = await createDemoRow(from, fields, values);
+    return from === 'datasets' ? projectRow(getSnapshot(), row, fields) : row;
+  }, onSuccess);
 }
 
 export function useRecordUpdate({ from, fields, onSuccess }: Mutation) {

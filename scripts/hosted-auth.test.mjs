@@ -274,7 +274,20 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   await page.getByRole('heading', { name: 'Scenario unavailable', exact: true }).waitFor();
   assert.equal(await page.getByText(scenario.name, { exact: true }).count(), 0);
 
+  const sectionPath = '/workspace?view=profiles';
+  await page.goto(callback + '/my-decisions');
+  await page.getByRole('button', { name: 'Customers', exact: true }).click();
+  await page.waitForURL(callback + sectionPath);
+  const otherTab = await page.context().newPage();
+  try {
+    await signOut(otherTab, b.email);
+  } finally { await otherTab.close(); }
+  await page.waitForURL(callback + '/login?next=' + encodeURIComponent(sectionPath));
+  await fillCredentials(page, b.email, password, 'Log in');
+  await page.waitForURL(callback + sectionPath);
+  await page.getByRole('heading', { name: 'Customer profiles', exact: true }).waitFor();
   await signOut(page, b.email);
+
   await page.goto(callback + '/forgot-password');
   await delay(1_050); // Respect the fixture's per-account mail interval.
   await page.getByLabel('Email', { exact: true }).fill(a.email);
@@ -299,5 +312,39 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   });
   await t.test('the real Edge handler saves both Advisor answers for the verified owner', async () => {
     await verifyAdvisor({ api, key, owner: signedIn, other: b.supabase, source: saved.id, page });
+  });
+  await t.test('modified analysis settings reopen from the isolated Supabase dataset', async () => {
+    await page.goto(callback + '/workspace?view=profiles');
+    const data = page.getByRole('region', { name: 'Your data', exact: true });
+    const lookback = page.getByRole('combobox', { name: /^Lookback window/ });
+    const savedData = data.getByRole('combobox', { name: /^Saved data/ });
+    await data.getByRole('button', { name: 'Open demo store', exact: true }).click();
+    await data.getByText(/analysis date 2026-11-05 · saved to your account/).waitFor();
+    await page.getByLabel('Analysis date', { exact: true }).fill('2026-11-07');
+    await lookback.selectOption('60');
+    await page.getByRole('button', { name: 'Analyze transactions', exact: true }).click();
+    await data.getByText(/analysis date 2026-11-07 · not saved yet/).waitFor();
+    await data.getByRole('button', { name: 'Save to my account', exact: true }).click();
+    await data.getByText(/analysis date 2026-11-07 · saved to your account/).waitFor();
+
+    const rows = requireSuccess(await signedIn.from('datasets')
+      .select('id,owner_id,source,csv,as_of,window_days'), 'Read saved datasets');
+    const canonical = rows.find(row => row.csv === 'demo:207');
+    const custom = rows.find(row => row.as_of === '2026-11-07');
+    assert.equal(canonical?.window_days, 30);
+    assert.equal(custom?.owner_id, a.user.id);
+    assert.equal(custom?.source, 'demo');
+    assert.equal(custom?.window_days, 60);
+    assert.match(custom.csv, /^transaction_id,customer_id,/);
+
+    await page.reload();
+    await data.getByText(/analysis date 2026-11-07 · saved to your account/).waitFor();
+    assert.equal(await lookback.inputValue(), '60');
+    await savedData.selectOption(canonical.id);
+    await data.getByText(/analysis date 2026-11-05 · saved to your account/).waitFor();
+    assert.equal(await lookback.inputValue(), '30');
+    await savedData.selectOption(custom.id);
+    await data.getByText(/analysis date 2026-11-07 · saved to your account/).waitFor();
+    assert.equal(await lookback.inputValue(), '60');
   });
 });

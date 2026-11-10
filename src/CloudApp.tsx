@@ -41,8 +41,11 @@ export default function CloudApp({ path, landing, workspace }: {
   }
   if (session === undefined) return <main className="preview-entry" role="status">Checking your session…</main>;
   if (workspacePaths.includes(path)) {
-    const destination = path === '/pixso-preview' ? '/workspace' : path;
-    if (!user) return <Redirect to={'/login?next=' + encodeURIComponent(destination + window.location.search)} />;
+    if (!user) {
+      const currentPath = window.location.pathname.replace(/\/$/, '');
+      const destination = currentPath === '/pixso-preview' ? '/workspace' : currentPath;
+      return <Redirect to={'/login?next=' + encodeURIComponent(destination + window.location.search)} />;
+    }
     return <SignedInWorkspace user={user} key={user.id}>{workspace}</SignedInWorkspace>;
   }
   if (path === '/account') return user ? <CloudAccount email={user.email} /> : <Redirect to="/login" />;

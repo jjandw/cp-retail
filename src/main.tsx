@@ -2,7 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { demoUser, WorkspaceIdentity } from './lib/user';
 import { cloudEnabled } from './lib/supabase-client';
-import { workspaceInitialView, workspacePaths } from './lib/routes.mjs';
+import { workspacePaths } from './lib/routes.mjs';
 import './shell.css';
 
 const Landing = lazy(() => import('./screens/Landing'));
@@ -27,7 +27,7 @@ function PreviewEntry({ account = false, missing = false }: { account?: boolean;
 }
 
 function App() {
-  const workspace = <Workspace initialView={workspaceInitialView(path)} />;
+  const workspace = <Workspace />;
   if (cloudEnabled) return <CloudApp path={path} landing={<Landing />} workspace={workspace} />;
   if (path === '/' || path === '/welcome') return <Landing />;
   if (workspacePaths.includes(path)) {

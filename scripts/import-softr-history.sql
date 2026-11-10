@@ -32,9 +32,27 @@ select r.id, h.owner_id, r.name, r.scenario_id, r.reason, r.status, r.decided_at
 from cp_history_rows h cross join lateral jsonb_populate_recordset(null::public.decisions, h.rows->'decisions') r
 on conflict (id) do nothing;
 
-insert into public.datasets (id, owner_id, name, source, csv, row_count, as_of, window_days, created_at)
+create temp table cp_history_datasets on commit drop as
 select r.id, h.owner_id, r.name, r.source, r.csv, r.row_count, r.as_of, r.window_days, r.created_at
-from cp_history_rows h cross join lateral jsonb_populate_recordset(null::public.datasets, h.rows->'datasets') r
+from cp_history_rows h cross join lateral jsonb_populate_recordset(null::public.datasets, h.rows->'datasets') r;
+
+-- Try the original marker first. A concurrent app insert may claim the canonical demo.
+insert into public.datasets (id, owner_id, name, source, csv, row_count, as_of, window_days, created_at)
+select id, owner_id, name, source, csv, row_count, as_of, window_days, created_at
+from cp_history_datasets
+on conflict do nothing;
+
+-- A conflicting demo is still a separate historical record. This marker decodes to
+-- the same sample transactions, with the historical row's own analysis settings.
+insert into public.datasets (id, owner_id, name, source, csv, row_count, as_of, window_days, created_at)
+select r.id, r.owner_id, r.name, r.source, 'demo:207:softr', r.row_count, r.as_of, r.window_days, r.created_at
+from cp_history_datasets r
+where r.csv = 'demo:207'
+  and not exists (select from public.datasets saved where saved.id = r.id)
+  and exists (
+    select from public.datasets canonical
+    where canonical.owner_id = r.owner_id and canonical.csv = 'demo:207' and canonical.id <> r.id
+  )
 on conflict (id) do nothing;
 
 insert into public.ai_requests
@@ -77,5 +95,10 @@ select json_build_object(
   'verifiedOwners', (select count(*) from cp_history_owners),
   'sourceOwners', (select jsonb_array_length(payload->'owners') from cp_history_input),
   'eligibleRecords', (select coalesce(sum(jsonb_array_length(records)), 0)
-    from cp_history_rows cross join lateral jsonb_each(rows) as record_sets (relation, records))
+    from cp_history_rows cross join lateral jsonb_each(rows) as record_sets (relation, records)),
+  'preservedDemoConflicts', (
+    select count(*) from cp_history_datasets incoming
+    join public.datasets saved using (id, owner_id)
+    where incoming.csv = 'demo:207' and saved.csv = 'demo:207:softr'
+  )
 );

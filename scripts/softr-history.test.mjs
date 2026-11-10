@@ -156,36 +156,106 @@ test('a decision cannot migrate to another owner or silently replace another dec
   assert.throws(() => prepareSoftrHistory({ ...snapshot, decisions: [...snapshot.decisions, ...snapshot.decisions] }), /Duplicate record/);
 });
 
-test('database import rolls back by default and applies only for confirmed owners', {
-  skip: process.env.CP_RETAIL_LOCAL_HISTORY_QA !== '1',
-}, () => {
+const isolatedDatabase = { skip: process.env.CP_RETAIL_LOCAL_HISTORY_QA !== '1' };
+
+function query(sql) {
   assert.equal(process.env.PGHOST, '127.0.0.1');
-  const query = sql => {
-    const result = spawnSync('psql', ['-X', '-qAtw', '-v', 'ON_ERROR_STOP=1', '-c', sql], { encoding: 'utf8' });
-    assert.equal(result.status, 0, result.stderr);
-    return result.stdout.trim();
-  };
-  const importRows = (...args) => spawnSync(process.execPath, ['scripts/import-softr-history.mjs', ...args], {
-    encoding: 'utf8', input: JSON.stringify(snapshot),
+  const result = spawnSync('psql', ['-X', '-qAtw', '-v', 'ON_ERROR_STOP=1', '-c', sql], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
+function importRows(rows, ...args) {
+  assert.equal(process.env.PGHOST, '127.0.0.1');
+  return spawnSync(process.execPath, ['scripts/import-softr-history.mjs', ...args], {
+    encoding: 'utf8', input: JSON.stringify(rows),
   });
+}
+
+test('database import rolls back by default and applies only for confirmed owners', isolatedDatabase, () => {
   const existingCount = () => query("select count(*) from public.scenarios where id in ('legacy-a', 'legacy-b');");
   query(`insert into auth.users (id,email,email_confirmed_at) values
     ('2e61472a-776e-4ac1-b60e-000000000003', '${alice}', now()),
     ('2e61472a-776e-4ac1-b60e-000000000004', '${bob}', null);`);
-  const dry = importRows();
+  const dry = importRows(snapshot);
   assert.equal(dry.status, 0, dry.stderr);
   assert.equal(JSON.parse(dry.stdout).verifiedOwners, 1);
   assert.equal(existingCount(), '0');
-  assert.equal(importRows('--apply', '--quarantine-retained').status, 1);
+  assert.equal(importRows(snapshot, '--apply', '--quarantine-retained').status, 1);
   assert.equal(existingCount(), '0');
   query(`update auth.users set email_confirmed_at = now() where email = '${bob}';`);
-  const live = importRows('--apply', '--quarantine-retained');
+  const live = importRows(snapshot, '--apply', '--quarantine-retained');
   assert.equal(live.status, 0, live.stderr);
-  assert.equal(JSON.parse(live.stdout).eligibleRecords, 7);
+  const liveReport = JSON.parse(live.stdout);
+  assert.equal(liveReport.eligibleRecords, 7);
+  assert.equal(liveReport.preservedDemoConflicts, 0);
+  assert.equal(query("select csv from public.datasets where id = 'legacy-data';"), 'demo:207');
   assert.equal(existingCount(), '2');
   assert.equal(query("select scenario_id from public.decisions where id = 'legacy-decision';"), 'legacy-a');
   assert.equal(query("select request_status from public.ai_requests where id = 'legacy-review';"), 'Failed');
   assert.equal(query("select gross_profit::numeric(12,2) from public.scenarios where id = 'legacy-a';"), '34675.00');
-  assert.equal(importRows('--apply', '--quarantine-retained').status, 0);
+  assert.equal(importRows(snapshot, '--apply', '--quarantine-retained').status, 0);
   assert.equal(existingCount(), '2');
+});
+
+test('a conflicting historical demo keeps its ID, owner and analysis settings', isolatedDatabase, () => {
+  const owner = '2e61472a-776e-4ac1-b60e-000000000005';
+  const other = '2e61472a-776e-4ac1-b60e-000000000006';
+  const ownerEmail = 'history-c@example.invalid';
+  const otherEmail = 'history-d@example.invalid';
+  const rows = {
+    products: [], scenarios: [], decisions: [], testFeedback: [], advisorVotes: [],
+    datasets: [record('historical-demo', {
+      ...snapshot.datasets[0].fields, nHOGb: ownerEmail, NAtCh: 'Historical demo',
+      '7fsWK': '2026-10-01', '8ucyJ': 90,
+    })],
+    aiRequests: [record('historical-demo-review', {
+      ...snapshot.aiRequests[0].fields, jeWoT: ownerEmail, H6ZBD: 'historical-demo',
+    })],
+  };
+  query(`insert into auth.users (id,email,email_confirmed_at) values
+    ('${owner}', '${ownerEmail}', now()), ('${other}', '${otherEmail}', now());
+    insert into public.datasets (id, owner_id, name, source, csv, row_count, as_of, window_days, created_at) values
+    ('native-demo', '${owner}', 'Existing demo', 'demo', 'demo:207', 1561, '2026-11-05', 30, '${timestamp}'),
+    ('other-demo', '${other}', 'Other demo', 'demo', 'demo:207', 1561, '2026-11-06', 60, '${timestamp}');`);
+  const datasetRows = () => JSON.parse(query(`set timezone = 'UTC';
+    select jsonb_object_agg(id, to_jsonb(d))
+    from public.datasets d where owner_id in ('${owner}', '${other}');`));
+  const before = datasetRows();
+  const dry = importRows(rows);
+  assert.equal(dry.status, 0, dry.stderr);
+  assert.equal(JSON.parse(dry.stdout).preservedDemoConflicts, 1);
+  assert.deepEqual(datasetRows(), before);
+  assert.equal(query("select count(*) from public.ai_requests where id = 'historical-demo-review';"), '0');
+
+  const apply = importRows(rows, '--apply');
+  assert.equal(apply.status, 0, apply.stderr);
+  assert.equal(JSON.parse(apply.stdout).preservedDemoConflicts, 1);
+  const after = datasetRows();
+  assert.deepEqual(after, {
+    ...before,
+    'historical-demo': {
+      id: 'historical-demo', owner_id: owner, name: 'Historical demo', source: 'demo', csv: 'demo:207:softr',
+      row_count: 1500, as_of: '2026-10-01', window_days: 90, created_at: '2026-11-10T00:00:00+00:00',
+    },
+  });
+  assert.equal(query("select source_id from public.ai_requests where id = 'historical-demo-review';"), 'historical-demo');
+
+  const visibleDemoIds = id => query(`begin; set local role authenticated;
+    set local request.jwt.claim.sub = '${id}';
+    select string_agg(id, ',' order by id) from public.datasets where id in ('historical-demo', 'native-demo', 'other-demo');
+    rollback;`);
+  assert.equal(visibleDemoIds(owner), 'historical-demo,native-demo');
+  assert.equal(visibleDemoIds(other), 'other-demo');
+  const repeat = importRows(rows, '--apply');
+  assert.equal(repeat.status, 0, repeat.stderr);
+  assert.equal(JSON.parse(repeat.stdout).preservedDemoConflicts, 1);
+  assert.deepEqual(datasetRows(), after);
+
+  const wrongOwner = importRows({ ...rows, aiRequests: [], datasets: [
+    record('historical-demo', { ...rows.datasets[0].fields, nHOGb: otherEmail }),
+  ] }, '--apply');
+  assert.equal(wrongOwner.status, 1);
+  assert.match(wrongOwner.stderr, /failed and rolled back/);
+  assert.deepEqual(datasetRows(), after);
 });

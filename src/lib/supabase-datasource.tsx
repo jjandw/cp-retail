@@ -113,8 +113,9 @@ export function useRecordCreate({ from, fields, onSuccess }: Mutation) {
     const { data, error } = await supabase!.from(tableNames[from])
       .insert({ ...payload, owner_id: user.id }).select('id').single();
     if (error?.code === '23505' && from === 'datasets' && payload.csv === 'demo:207') {
-      const existing = await supabase!.from('datasets').select('id').eq('owner_id', user.id).eq('csv', 'demo:207').single();
-      if (!existing.error) return { id: existing.data.id, fields: values };
+      const existing = await supabase!.from('datasets').select(selectColumns(from, fields))
+        .eq('owner_id', user.id).eq('csv', 'demo:207').single();
+      if (!existing.error) return projectWorkspaceRow(from, existing.data as unknown as DatabaseRow, fields, user);
     }
     if (error?.code === '23505' && from === 'decisions') throw Error('A decision already exists for this scenario.');
     if (error) throw Error(error.message);
