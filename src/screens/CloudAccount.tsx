@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase-client';
+import { workspaceReturnPath } from '@/lib/routes.mjs';
 
 type Mode = 'login' | 'sign-up' | 'forgot-password' | 'reset-password';
 const titles: Record<Mode, string> = {
@@ -10,12 +11,7 @@ const titles: Record<Mode, string> = {
 };
 
 export function workspaceDestination() {
-  const next = new URLSearchParams(window.location.search).get('next');
-  if (next?.startsWith('/workspace')) {
-    const url = new URL(next, window.location.origin);
-    if (url.origin === window.location.origin && url.pathname === '/workspace') return url.pathname + url.search;
-  }
-  return '/workspace';
+  return workspaceReturnPath(window.location.search, window.location.origin);
 }
 
 function AccountCard({ title, children }: { title: string; children: React.ReactNode }) {

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CloudAccount, CloudAuthForm, workspaceDestination } from './screens/CloudAccount';
 import { getAuthState, subscribeAuth } from './lib/supabase-client';
+import { workspacePaths } from './lib/routes.mjs';
 import { WorkspaceIdentity } from './lib/user';
 import type { WorkspaceUser } from './lib/user';
 
@@ -39,8 +40,9 @@ export default function CloudApp({ path, landing, workspace }: {
     return landing;
   }
   if (session === undefined) return <main className="preview-entry" role="status">Checking your session…</main>;
-  if (path === '/workspace' || path === '/pixso-preview') {
-    if (!user) return <Redirect to={'/login?next=' + encodeURIComponent('/workspace' + window.location.search)} />;
+  if (workspacePaths.includes(path)) {
+    const destination = path === '/pixso-preview' ? '/workspace' : path;
+    if (!user) return <Redirect to={'/login?next=' + encodeURIComponent(destination + window.location.search)} />;
     return <SignedInWorkspace user={user} key={user.id}>{workspace}</SignedInWorkspace>;
   }
   if (path === '/account') return user ? <CloudAccount email={user.email} /> : <Redirect to="/login" />;

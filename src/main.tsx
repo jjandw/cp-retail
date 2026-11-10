@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { demoUser, WorkspaceIdentity } from './lib/user';
 import { cloudEnabled } from './lib/supabase-client';
+import { workspacePaths } from './lib/routes.mjs';
 import './shell.css';
 
 const Landing = lazy(() => import('./screens/Landing'));
@@ -26,10 +27,11 @@ function PreviewEntry({ account = false, missing = false }: { account?: boolean;
 }
 
 function App() {
-  if (cloudEnabled) return <CloudApp path={path} landing={<Landing />} workspace={<Workspace />} />;
+  const workspace = <Workspace initialView={path === '/my-decisions' ? 'my-decisions' : undefined} />;
+  if (cloudEnabled) return <CloudApp path={path} landing={<Landing />} workspace={workspace} />;
   if (path === '/' || path === '/welcome') return <Landing />;
-  if (path === '/workspace' || path === '/pixso-preview') {
-    return <WorkspaceIdentity.Provider value={demoUser}><Workspace /></WorkspaceIdentity.Provider>;
+  if (workspacePaths.includes(path)) {
+    return <WorkspaceIdentity.Provider value={demoUser}>{workspace}</WorkspaceIdentity.Provider>;
   }
   return <PreviewEntry account={path === '/account'}
     missing={!['/login', '/sign-up', '/forgot-password', '/reset-password', '/account'].includes(path)} />;

@@ -2618,14 +2618,14 @@ function TestMode({state, onStart, onSkip, onReset, go}: any) {
 }
 // END V2 WORKSPACE
 
-export default function Block(){
+export default function Block({initialView}: {initialView?: 'my-decisions'}){
   const brand=useTextSetting({name:'retail-brand',label:'Brand name',initialValue:'CP Retail'});
   const loginLink=useNavigationSetting({name:'real-login',label:'Softr login page',initialValue:{destination:'/login',openIn:'SELF'}});
   const savedLink=useNavigationSetting({name:'existing-scenarios',label:'Existing database scenario workflow',initialValue:{destination:'/',openIn:'SELF'}});
   const user=useCurrentUser();
   const [listVisit,setListVisit]=useState(0);
   const linkedRecordId=useCurrentRecordId();
-  const [view,setView]=useState(linkedRecordId ? 'my-scenarios' : 'start');
+  const [view,setView]=useState<string>(initialView ?? (linkedRecordId ? 'my-scenarios' : 'start'));
   const [opsSourceId,setOpsSourceId]=useState('');
   const [opsProfile,setOpsProfile]=useState<any>(null);
   const [profileState,setProfileState]=useState<any>(()=>({csv:'',asOf:DEMO_STORE_AS_OF,windowDays:'30',origin:'No data yet',analysis:null,datasetId:null}));

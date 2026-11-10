@@ -2,8 +2,7 @@ import { fileURLToPath, URL } from 'node:url';
 import { copyFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { defineConfig, loadEnv } from 'vite';
-
-const entryRoutes = ['welcome', 'workspace', 'pixso-preview', 'login', 'sign-up', 'forgot-password', 'reset-password', 'account'];
+import { staticPaths } from './src/lib/routes.mjs';
 
 function publishable(key) {
   if (key.startsWith('sb_publishable_')) return true;
@@ -35,8 +34,8 @@ export default defineConfig(({ mode }) => {
       async writeBundle({ dir }) {
         if (mode !== 'cloud') return;
         // Static hosts can serve password links and workspace deep links as directory indexes.
-        await Promise.all(entryRoutes.map(async route => {
-          const target = join(dir, route);
+        await Promise.all(staticPaths.map(async route => {
+          const target = join(dir, route.slice(1));
           await mkdir(target, { recursive: true });
           await copyFile(join(dir, 'index.html'), join(target, 'index.html'));
         }));
