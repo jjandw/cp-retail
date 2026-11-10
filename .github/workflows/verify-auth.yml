@@ -2,20 +2,9 @@ name: Verify Supabase account flow
 
 on:
   push:
-    branches: [main, 'codex/supabase-migration']
-    paths:
-      - '.github/workflows/verify-auth.yml'
-      - 'package-lock.json'
-      - 'scripts/hosted-auth.test.mjs'
-      - 'src/CloudApp.tsx'
-      - 'src/lib/routes.mjs'
-      - 'src/lib/supabase-client.ts'
-      - 'src/screens/CloudAccount.tsx'
-      - 'supabase/functions/**'
-      - 'supabase/migrations/**'
-      - 'supabase/tests/fixtures/auth-stack.toml'
-      - 'supabase/tests/fixtures/advisor-entry.ts'
-      - 'supabase/tests/fixtures/advisor-contexts.mjs'
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

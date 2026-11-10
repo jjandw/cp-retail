@@ -64,7 +64,7 @@ async function openBrowser(t, api, key) {
   const outDir = join(stack, 'web-dist');
   const vite = 'node_modules/vite/bin/vite.js';
   execFileSync(process.execPath, [vite, 'build', '--outDir', outDir], {
-    env: { ...process.env, VITE_SUPABASE_URL: api.origin, VITE_SUPABASE_PUBLISHABLE_KEY: key, VITE_ENABLE_ADVISOR: 'false' },
+    env: { ...process.env, VITE_SUPABASE_URL: api.origin, VITE_SUPABASE_PUBLISHABLE_KEY: key, VITE_ENABLE_ADVISOR: 'true' },
     stdio: ['ignore', 'ignore', 'inherit'],
   });
   const server = spawn(process.execPath, [vite, 'preview', '--outDir', outDir, '--host', '127.0.0.1', '--port', '4173', '--strictPort'], {
@@ -98,6 +98,37 @@ async function signOut(page, email) {
   await page.getByText('Signed in as ' + email, { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Log out', exact: true }).click();
   await page.waitForURL(callback + '/login');
+}
+
+async function savedAdvisorAnswer(owner, source, version) {
+  const row = requireSuccess(await owner.from('ai_requests')
+    .select('request_status,answer,answered_at').eq('source_id', source).single(), 'Read the UI-created Advisor review');
+  assert.equal(row.request_status, 'Completed');
+  assert.ok(row.answered_at, 'The model result was persisted');
+  assert.ok(row.answer.startsWith(version + '\n\n'), 'The answer has the expected format');
+  return row.answer;
+}
+
+async function verifyAdvisorScreens(page, owner, scenarioId) {
+  await page.getByRole('button', { name: 'Open demo store', exact: true }).click();
+  // Use a different group from the gateway test so both paths generate their own review.
+  await page.getByLabel('Planning segment', { exact: true }).selectOption('recent');
+  const groupCard = page.getByRole('region', { name: 'CP Retail Advisor', exact: true });
+  await groupCard.getByRole('button', { name: 'Explain this group', exact: true }).click();
+  await groupCard.getByText('AI insight added', { exact: true }).waitFor({ timeout: 25_000 });
+  const groupAnswer = await savedAdvisorAnswer(owner, 'PROFILE-recent', 'AI group explanation · v1.0');
+  const firstCheck = groupAnswer.match(/\n\nVerify first\n1\. ([^\n]+)/)?.[1];
+  assert.ok(firstCheck, 'The saved group answer includes a verification step');
+  await groupCard.getByRole('listitem').filter({ hasText: firstCheck }).waitFor();
+
+  await page.getByRole('button', { name: 'Recommendations', exact: true }).click();
+  await page.getByLabel('Starting scenario *', { exact: true }).selectOption(scenarioId);
+  await page.locator('form').getByRole('button', { name: 'Compare actions', exact: true }).click();
+  const decisionCard = page.getByRole('region', { name: 'Decision readiness review', exact: true });
+  await decisionCard.getByRole('button', { name: 'Ask AI: what should I verify first?', exact: true }).click();
+  await decisionCard.getByText('AI review saved', { exact: true }).waitFor({ timeout: 25_000 });
+  const decisionAnswer = await savedAdvisorAnswer(owner, scenarioId, 'AI decision review · v1.2');
+  await decisionCard.getByText(decisionAnswer, { exact: true }).waitFor();
 }
 
 async function verifyAdvisor({ api, key, owner, other, source, page }) {
@@ -263,6 +294,9 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   assert.equal(user.id, a.user.id);
   const retained = requireSuccess(await signedIn.from('scenarios').select('id').eq('id', saved.id).single(), 'Read scenario after recovery');
   assert.equal(retained.id, saved.id);
+  await t.test('customer groups and Recommendations render saved Advisor answers', async () => {
+    await verifyAdvisorScreens(page, signedIn, saved.id);
+  });
   await t.test('the real Edge handler saves both Advisor answers for the verified owner', async () => {
     await verifyAdvisor({ api, key, owner: signedIn, other: b.supabase, source: saved.id, page });
   });
