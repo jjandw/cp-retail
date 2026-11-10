@@ -2,7 +2,7 @@ name: Verify Supabase account flow
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/supabase-migration']
   pull_request:
     branches: [main]
   workflow_dispatch:
