@@ -4,7 +4,8 @@ const workspaceViews = new Set([
   'my-scenarios', 'my-decisions', 'test', 'login', 'scenarios', 'decisions',
 ]);
 export const workspacePaths = ['/workspace', '/pixso-preview', '/my-decisions', ...scenarioPaths];
-export const staticPaths = ['/welcome', ...workspacePaths, '/login', '/sign-up', '/forgot-password', '/reset-password', '/account'];
+export const landingStudioPath = '/content';
+export const staticPaths = ['/welcome', ...workspacePaths, '/login', '/sign-up', '/forgot-password', '/reset-password', '/account', landingStudioPath];
 
 export function workspaceInitialView(path) {
   if (path === '/my-decisions') return 'my-decisions';
@@ -35,7 +36,7 @@ export function workspaceReturnPath(search, origin) {
   try {
     const url = new URL(next, origin);
     const path = url.pathname.replace(/\/$/, '');
-    if (url.origin === origin && workspacePaths.includes(path)) {
+    if (url.origin === origin && (workspacePaths.includes(path) || path === landingStudioPath)) {
       return (path === '/pixso-preview' ? '/workspace' : path) + url.search;
     }
   } catch {

@@ -26,6 +26,16 @@ The frontend uses a publishable key or legacy anon key. Both values are required
 
 Use `supabase/tests/workspace_policies.sql` on an isolated test database to verify the pricing formulas and two-account access. The test uses synthetic identities and rolls back its data. Verify browser registration, sign-in and record ownership in the intended Supabase project before cutover.
 
+## Homepage content
+
+After the landing content migration is applied, a Supabase project operator assigns an `editor` and a separate `reviewer` in `public.landing_members` by verified Auth user ID. Both members use normal email sign-in. Open **Account settings → Content studio** or go directly to `/content`.
+
+1. The editor changes the title, introduction, promotional image, image description, and demo link. Save the draft, open **Preview homepage**, then submit for review.
+2. The reviewer opens the submitted version and previews the same homepage. Choose **Approve and publish** to make it the current revision, or **Return to author** to request changes.
+3. Open the homepage in a signed-out browser to confirm the current copy and image. **Restore previous homepage** in Content studio switches back to the preceding revision and records the rollback.
+
+Run `supabase/tests/landing_content_policies.sql` in the isolated policy suite and the content browser check in `scripts/hosted-auth.test.mjs` against the isolated Supabase stack.
+
 ## Advisor
 
 After applying the Advisor migration, deploy the `advisor` Edge Function from this checkout with `supabase functions deploy advisor --project-ref <ref> --use-api`. The function verifies the user's access token with Supabase Auth and reads the saved request for that user. Set `DEEPSEEK_KEY` and `ADVISOR_ALLOWED_ORIGINS` in Edge Function secrets. The latter is a comma-separated list of exact site origins. Supabase supplies the server-side project credentials.
@@ -52,6 +62,11 @@ Use `-Mode DryRun` with the intended Postgres connection settings for a rolled-b
 
 ## Cloud hosting
 
-Connect the private GitHub repository to a static host that supports Git branch previews. On Cloudflare Pages, use the repository root, Node.js 24, `npm run build:cloud` and output directory `dist`. Set `NODE_VERSION=24` and the Supabase variables above in the relevant build environments. A cloud build fails if the Supabase configuration is absent and includes directory indexes for workspace and account links.
+In Cloudflare **Workers & Pages → Create application → Pages → Connect to Git**, connect the private repository and choose `main` as the production branch. Use the repository root, `NODE_VERSION=24`, build command `npm run build:pages`, and output directory `dist`. Enable the branches the team uses for preview builds, including `codex/*`. Configure Cloudflare Access for team-only preview URLs before sharing them.
 
-Use a stable preview origin for end-to-end testing. Allow only the exact verification and recovery URLs in Supabase Auth. Add that origin to the Advisor's allowlist before testing AI. Verify changes in a branch preview before merging the release to the production branch.
+- **Preview** uses the bundled demo when the Supabase variables are empty. For an account-enabled preview, set its own Supabase URL and publishable key, plus `CP_RETAIL_PRODUCTION_SUPABASE_URL` set to the production Supabase origin. Use the stable branch URL for the staging Auth verification and password recovery redirects. Add it to the staging Advisor's allowlist if Advisor is enabled.
+- **Production** sets `CP_RETAIL_PRODUCTION_SUPABASE_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` for the approved production project. The build writes `/release.json` with the branch and commit so reviewers can verify what Pages is serving.
+
+Team members create a branch in GitHub and open a PR to `main`. Reviewers open the Cloudflare Pages check on the PR, verify the linked deployment's `/release.json` against the PR head, and check both GitHub Actions jobs before approving. Enable automatic production builds only after GitHub requires independent approval and passing checks on `main`. If the repository plan cannot enforce these rules, keep automatic production builds off. A maintainer checks approval and CI, merges the PR, and can deploy the reviewed `main` commit with Wrangler. Set `CF_PAGES_BRANCH=main` and `CF_PAGES_COMMIT_SHA` to that commit when running `npm run build:pages` outside Cloudflare, then run `wrangler pages deploy dist --project-name <pages-project> --branch main --commit-hash <commit>`.
+
+After a release, check the live `/release.json` and sign-in and workspace routes. For a frontend rollback, open the Cloudflare Pages project's deployment history, find the last approved production deployment, and choose **Rollback to this deployment**. Recheck the live release and routes. Content revisions use the Content studio rollback, and Supabase schema and data use their own migration procedures.

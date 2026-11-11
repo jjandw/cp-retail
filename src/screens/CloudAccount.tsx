@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase-client';
-import { workspaceReturnPath } from '@/lib/routes.mjs';
+import { landingStudioPath, workspaceReturnPath } from '@/lib/routes.mjs';
+import { readLandingRole } from '@/lib/landing-content';
 
 type Mode = 'login' | 'sign-up' | 'forgot-password' | 'reset-password';
 const titles: Record<Mode, string> = {
@@ -26,6 +27,13 @@ function AccountCard({ title, children }: { title: string; children: React.React
 export function CloudAccount({ email }: { email: string }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [canEditLanding, setCanEditLanding] = useState(false);
+  useEffect(() => {
+    let current = true;
+    setCanEditLanding(false);
+    readLandingRole().then(role => { if (current) setCanEditLanding(!!role); }).catch(() => {});
+    return () => { current = false; };
+  }, [email]);
   const logOut = async () => {
     setBusy(true);
     const { error } = await supabase!.auth.signOut({ scope: 'local' });
@@ -40,6 +48,7 @@ export function CloudAccount({ email }: { email: string }) {
     {error && <p className="account-error" role="alert">{error}</p>}
     <div className="preview-actions">
       <a className="preview-primary" href="/workspace">Return to workspace</a>
+      {canEditLanding && <a href={landingStudioPath}>Content studio</a>}
       <button type="button" onClick={logOut} disabled={busy}>{busy ? 'Logging out…' : 'Log out'}</button>
     </div>
   </AccountCard>;

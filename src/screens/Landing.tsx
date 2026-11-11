@@ -3,6 +3,8 @@ import { NavigationAction } from '@/components/navigation-action';
 import { useNavigation, useNavigationSetting, useTextSetting } from '@/lib/editable-settings';
 import { useCurrentUser } from '@/lib/user';
 import { cloudEnabled } from '@/lib/supabase-client';
+import { defaultLandingCopy, defaultLandingImage, landingDemoUrl, landingImageUrl, readPublishedLanding } from '@/lib/landing-content';
+import type { LandingCopy } from '@/lib/landing-content';
 
 function BrandMark({size=34,className=''}:{size?:number;className?:string}) {
   return <svg className={'brand-logo '+className} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="15" fill="#21675D"/><path d="M19 24h26l-2.6 23.2a3 3 0 0 1-3 2.8H24.6a3 3 0 0 1-3-2.8z" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinejoin="round"/><path d="M25.5 24v-3a6.5 6.5 0 0 1 13 0v3" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round"/><path d="M25.6 36.4l4.6 4.6 8.6-9" fill="none" stroke="#DCECE6" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"/></svg>;
@@ -60,9 +62,16 @@ function LandingDecisionMock() {
   </div>;
 }
 
-function Landing({brand}: {brand: string}) {
+export function LandingPage({brand, content, imageUrl, preview = false}: {
+  brand: string;
+  content?: LandingCopy;
+  imageUrl?: string;
+  preview?: boolean;
+}) {
   const loginLink = useNavigationSetting({name:'landing-login',label:'Landing: log in page',initialValue:{destination:'/login',openIn:'SELF'}});
   const signupLink = useNavigationSetting({name:'landing-signup',label:'Landing: sign-up page',initialValue:{destination:'/sign-up',openIn:'SELF'}});
+  const copy = content ?? defaultLandingCopy;
+  const demoUrl = content && landingDemoUrl(content.demo_url);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const glowRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -82,10 +91,14 @@ function Landing({brand}: {brand: string}) {
     <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandMark size={26}/>{brand}</span><nav className="l-row l-links"><a href="#how">How it works</a><NavigationAction navigation={loginLink} className="l-link">{cloudEnabled ? 'Log in' : 'Preview access'}</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">{cloudEnabled ? 'Get started' : 'Try demo'}</NavigationAction></nav></div></header>
     <section className="l-hero"><div className="l-glow" ref={glowRef} aria-hidden="true"/><div className="l-wrap">
       <p className="l-eyebrow lv">For convenience-store managers</p>
-      <h1 className="lv d1">Know who to win back.<br/>Before you discount.</h1>
-      <p className="l-lead lv d2">See which customers are drifting away, check whether an offer pays for itself, and save the decision — in three steps.</p>
-      <img className="l-hero-img lv d2" src="/studio-media/478a380e-df54-42c2-a1aa-116f4493ef46.jpeg" alt="Convenience store" loading="lazy"/>
-      <div className="l-cta lv d3"><NavigationAction navigation={signupLink} className="l-pill l-big">{cloudEnabled ? 'Get started' : 'Try demo'}</NavigationAction><a href="#how" className="l-more">See how it works ›</a></div>
+      <h1 className="lv d1" style={{whiteSpace:'pre-line'}}>{copy.title}</h1>
+      <p className="l-lead lv d2">{copy.summary}</p>
+      <img className="l-hero-img lv d2" src={imageUrl ?? defaultLandingImage} alt={imageUrl ? copy.image_alt : defaultLandingCopy.image_alt} loading="lazy"/>
+      <div className="l-cta lv d3">
+        {demoUrl ? <a className="l-pill l-big" href={demoUrl} target={preview ? '_blank' : undefined} rel={preview ? 'noopener noreferrer' : undefined}>{copy.demo_label}</a>
+          : <NavigationAction navigation={signupLink} className="l-pill l-big">{cloudEnabled ? 'Get started' : 'Try demo'}</NavigationAction>}
+        <a href="#how" className="l-more">See how it works ›</a>
+      </div>
       <div className="l-glass lv d4" aria-label="Example result"><p className="l-small">Return offer · Cooling regulars · {LANDING_DISCOUNT}% off</p><p className="l-verdict">Pays back</p><p className="l-small">Break-even return rate <b>{landingBreakEven(20)}%</b> · you expect 45%</p><div className="l-bar"><i style={{width: landingBreakEven(20) + '%'}}/></div></div>
     </div></section>
     <section className="l-feat" id="how"><div className="l-wrap">
@@ -195,7 +208,18 @@ export default function Block(){
   const workspace=useNavigationSetting({name:'workspace-home',label:'Workspace page for signed-in users',initialValue:{destination:'/pixso-preview',openIn:'SELF'}});
   const navigate=useNavigation();
   const user=useCurrentUser();
+  const [published, setPublished] = useState<{copy: LandingCopy; imageUrl?: string}>();
   useEffect(()=>{if(user?.email)navigate(workspace);},[user?.email]);
+  useEffect(() => {
+    if (!cloudEnabled || user?.email) return;
+    let current = true;
+    readPublishedLanding().then(async ({ copy }) => {
+      if (!copy) return;
+      const imageUrl = await landingImageUrl(copy.image_path).catch(() => undefined);
+      if (current) setPublished({ copy, imageUrl });
+    }).catch(() => {});
+    return () => { current = false; };
+  }, [user?.email]);
   if(user?.email)return <div style={{padding:48,textAlign:'center',fontFamily:'system-ui'}}>Opening your workspace…</div>;
-  return <div className="cp-landing-overlay" style={{position:'fixed',inset:0,zIndex:2147483000,overflowY:'auto',background:'#07110f'}}><Landing brand={brand}/></div>;
+  return <div className="cp-landing-overlay" style={{position:'fixed',inset:0,zIndex:2147483000,overflowY:'auto',background:'#07110f'}}><LandingPage brand={brand} content={published?.copy} imageUrl={published?.imageUrl}/></div>;
 }

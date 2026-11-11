@@ -1,10 +1,12 @@
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { lazy, useEffect, useState, useSyncExternalStore } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CloudAccount, CloudAuthForm, workspaceDestination } from './screens/CloudAccount';
 import { getAuthState, subscribeAuth } from './lib/supabase-client';
-import { workspacePaths } from './lib/routes.mjs';
+import { landingStudioPath, workspacePaths } from './lib/routes.mjs';
 import { WorkspaceIdentity } from './lib/user';
 import type { WorkspaceUser } from './lib/user';
+
+const LandingStudio = lazy(() => import('./screens/LandingStudio'));
 
 function Redirect({ to }: { to: string }) {
   useEffect(() => { window.location.replace(to); }, [to]);
@@ -40,6 +42,9 @@ export default function CloudApp({ path, landing, workspace }: {
     return landing;
   }
   if (session === undefined) return <main className="preview-entry" role="status">Checking your session…</main>;
+  if (path === landingStudioPath) {
+    return user ? <LandingStudio key={user.id} userId={user.id} /> : <Redirect to={'/login?next=' + encodeURIComponent(landingStudioPath)} />;
+  }
   if (workspacePaths.includes(path)) {
     if (!user) {
       const currentPath = window.location.pathname.replace(/\/$/, '');

@@ -41,7 +41,7 @@ jobs:
           trap '(cd "$CP_RETAIL_AUTH_QA_STACK" && supabase stop --no-backup) >/dev/null 2>&1 || true' EXIT
           (
             cd "$CP_RETAIL_AUTH_QA_STACK"
-            if ! supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,logflare,vector,supavisor > "$RUNNER_TEMP/cp-retail-auth-start.log" 2>&1; then
+            if ! supabase start -x realtime,imgproxy,postgres-meta,studio,logflare,vector,supavisor > "$RUNNER_TEMP/cp-retail-auth-start.log" 2>&1; then
               grep -Ei 'error|failed|unknown flag|invalid' "$RUNNER_TEMP/cp-retail-auth-start.log" | tail -n 20
               exit 1
             fi

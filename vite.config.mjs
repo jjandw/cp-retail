@@ -14,7 +14,9 @@ function publishable(key) {
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), 'VITE_SUPABASE_');
+  const env = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_COMMIT_SHA
+    ? process.env
+    : loadEnv(mode, process.cwd(), 'VITE_SUPABASE_');
   const url = env.VITE_SUPABASE_URL?.trim();
   const key = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
   if (Boolean(url) !== Boolean(key)) throw Error('Set both Supabase URL and publishable key to enable cloud accounts.');

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { parseEnv } from 'node:util';
@@ -79,12 +80,17 @@ async function openBrowser(t, api, key) {
   }
   const browser = await chromium.launch({ channel: process.env.CP_RETAIL_BROWSER_CHANNEL || undefined });
   t.after(() => browser.close());
-  const context = await browser.newContext();
-  const origins = new Set([callback, api.origin, 'http://127.0.0.1:54321', 'http://localhost:54321']);
-  await context.route('**/*', route => origins.has(new URL(route.request().url()).origin) ? route.continue() : route.abort());
+  const context = await newFixtureContext(browser, api);
   const page = await context.newPage();
   page.setDefaultTimeout(12_000);
   return page;
+}
+
+async function newFixtureContext(browser, api) {
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const origins = new Set([callback, api.origin, 'http://127.0.0.1:54321', 'http://localhost:54321']);
+  await context.route('**/*', route => origins.has(new URL(route.request().url()).origin) ? route.continue() : route.abort());
+  return context;
 }
 
 async function fillCredentials(page, email, password, submit) {
@@ -188,9 +194,115 @@ async function verifyAdvisor({ api, key, owner, other, source, page }) {
   }
 }
 
+async function verifyLandingContent(t, { api, serviceKey, page, editor, reviewer, client }) {
+  assert.ok(serviceKey, 'The isolated fixture has a service credential to seed content membership');
+  const service = createClient(api.origin, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  assert.equal(editor.user.role, 'authenticated');
+  assert.equal(reviewer.user.role, 'authenticated');
+  requireSuccess(await service.from('landing_members').insert([
+    { user_id: editor.user.id, role: 'editor' },
+    { user_id: reviewer.user.id, role: 'reviewer' },
+  ]), 'Seed the two local content member roles');
+
+  const context = await newFixtureContext(page.context().browser(), api);
+  t.after(() => context.close());
+  const visitorPage = await context.newPage();
+  visitorPage.setDefaultTimeout(12_000);
+  const visitor = client();
+  const title = 'Find your next returning customer';
+  const defaultTitle = /^Know who to win back/;
+  const imageAlt = 'Customer segments promotion';
+  const bucket = 'cp-retail-landing';
+  const screenshots = process.env.CP_RETAIL_CONTENT_QA_SCREENSHOTS;
+  if (screenshots) await mkdir(screenshots, { recursive: true });
+  const capture = (target, file) => screenshots ? target.screenshot({ path: join(screenshots, file) }) : Promise.resolve();
+
+  async function checkEditedHomepage(target) {
+    await target.getByRole('heading', { name: title, exact: true }).waitFor();
+    const image = target.getByRole('img', { name: imageAlt, exact: true });
+    await image.scrollIntoViewIfNeeded();
+    await image.evaluate(element => element.decode());
+    assert.equal(await target.getByRole('link', { name: 'See the retail demo', exact: true }).getAttribute('href'), '/welcome');
+  }
+
+  const contentPath = callback + '/content';
+  await signOut(page, editor.user.email);
+  await page.goto(contentPath);
+  await page.waitForURL(callback + '/login?next=%2Fcontent');
+  await fillCredentials(page, editor.user.email, editor.password, 'Log in');
+  await page.waitForURL(contentPath);
+  await page.getByText('Role: Content editor · Published revision 0', { exact: true }).waitFor();
+  await page.getByLabel('Homepage title').fill(title);
+  await page.getByLabel('Homepage introduction').fill('A synthetic homepage draft for the two-account browser check.');
+  await page.getByLabel('Promotional image').setInputFiles('public/studio-media/706fe44e-e1c0-437c-a53f-ca2f8a0919dc.jpeg');
+  await page.getByText('Image uploaded. Preview or save the draft.', { exact: true }).waitFor();
+  await page.getByLabel('Image description').fill(imageAlt);
+  await page.getByLabel('Demo link label').fill('See the retail demo');
+  await page.getByLabel('Demo link', { exact: true }).fill('/welcome');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await page.getByText('Draft saved.', { exact: true }).waitFor();
+  const draft = requireSuccess(await editor.supabase.from('landing_versions')
+    .select('id,author_id,image_path,edit_revision,status').single(), 'Read the editor’s saved draft');
+  assert.equal(draft.author_id, editor.user.id);
+  assert.equal(draft.status, 'draft');
+  assert.ok(draft.image_path.startsWith(editor.user.id + '/'));
+  assert.deepEqual(requireSuccess(await reviewer.supabase.from('landing_versions').select('id'), 'Check other member draft visibility'), []);
+  assert.ok((await visitor.from('landing_versions').select('id')).error, 'Anonymous draft table reads are denied');
+  assert.ok((await reviewer.supabase.storage.from(bucket).createSignedUrl(draft.image_path, 60)).error, 'Other member cannot sign a draft image URL');
+  assert.ok((await visitor.storage.from(bucket).createSignedUrl(draft.image_path, 60)).error, 'Visitor cannot sign a draft image URL');
+  await visitorPage.goto(callback);
+  await visitorPage.getByRole('heading', { name: defaultTitle }).waitFor();
+
+  await page.reload();
+  await page.getByRole('button', { name: title + ' · draft', exact: true }).click();
+  await page.getByRole('button', { name: 'Preview homepage', exact: true }).click();
+  await checkEditedHomepage(page);
+  await capture(page, '01-editor-preview.png');
+  await page.getByRole('button', { name: 'Back to Content studio', exact: true }).click();
+  await page.getByRole('button', { name: 'Submit for review', exact: true }).click();
+  await page.getByText('Submitted for review.', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Approve and publish', exact: true }).count(), 0);
+  const forbidden = await editor.supabase.rpc('publish_landing_version', {
+    p_id: draft.id, p_edit_revision: draft.edit_revision + 1, p_expected_generation: 0,
+  });
+  assert.equal(forbidden.error?.code, '42501', 'Editor cannot publish through the API');
+
+  await signOut(page, editor.user.email);
+  await page.goto(contentPath);
+  await fillCredentials(page, reviewer.user.email, reviewer.password, 'Log in');
+  await page.waitForURL(contentPath);
+  await page.getByText('Role: Content reviewer · Published revision 0', { exact: true }).waitFor();
+  await page.getByRole('button', { name: title + ' · submitted', exact: true }).click();
+  const publish = page.getByRole('button', { name: 'Approve and publish', exact: true });
+  assert.ok(await publish.isDisabled(), 'Reviewer must open the submitted preview before publishing through the studio');
+  await page.getByRole('button', { name: 'Preview homepage', exact: true }).click();
+  await checkEditedHomepage(page);
+  await capture(page, '02-reviewer-preview.png');
+  await page.getByRole('button', { name: 'Back to Content studio', exact: true }).click();
+  await publish.click();
+  await page.getByText('Homepage published.', { exact: true }).waitFor();
+  await visitorPage.reload();
+  await checkEditedHomepage(visitorPage);
+  await capture(visitorPage, '03-publication.png');
+
+  await page.getByRole('button', { name: 'Restore previous homepage', exact: true }).click();
+  await page.getByText('Previous homepage restored.', { exact: true }).waitFor();
+  await page.getByText('Revision 2 · rollback', { exact: true }).waitFor();
+  await visitorPage.reload();
+  await visitorPage.getByRole('heading', { name: defaultTitle }).waitFor();
+  await visitorPage.getByRole('img', { name: 'Convenience store', exact: true }).evaluate(element => element.decode());
+  await capture(visitorPage, '04-rollback.png');
+  assert.deepEqual(requireSuccess(await reviewer.supabase.from('landing_publication_log')
+    .select('generation,action,reviewer_id').order('generation'), 'Read publication and rollback history'), [
+    { generation: 1, action: 'publish', reviewer_id: reviewer.user.id },
+    { generation: 2, action: 'rollback', reviewer_id: reviewer.user.id },
+  ]);
+  assert.ok((await visitor.storage.from(bucket).createSignedUrl(draft.image_path, 60)).error, 'Visitor cannot mint new image URLs after rollback');
+}
+
 test('the built site verifies email, opens the decision bookmark, resets passwords, and keeps data private', {
   skip: !stack,
-  timeout: 120_000,
+  timeout: 180_000,
 }, async t => {
   const status = parseEnv(execFileSync('supabase', ['status', '-o', 'env'], {
     cwd: stack, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
@@ -346,5 +458,12 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
     await savedData.selectOption(custom.id);
     await data.getByText(/analysis date 2026-11-07 · saved to your account/).waitFor();
     assert.equal(await lookback.inputValue(), '60');
+  });
+  await t.test('two ordinary members save, preview, publish, and roll back homepage content', async studioTest => {
+    await verifyLandingContent(studioTest, {
+      api, serviceKey: status.SECRET_KEY ?? status.SERVICE_ROLE_KEY, page, client,
+      editor: { user, supabase: signedIn, password: nextPassword },
+      reviewer: { user: b.user, supabase: b.supabase, password },
+    });
   });
 });
