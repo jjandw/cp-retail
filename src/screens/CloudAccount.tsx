@@ -24,9 +24,15 @@ function AccountCard({ title, children }: { title: string; children: React.React
   </div></main>;
 }
 
-export function CloudAccount({ email }: { email: string }) {
+export function CloudAccount({ email, fullName }: { email: string; fullName: string }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [name, setName] = useState(fullName);
+  const [savedName, setSavedName] = useState(fullName);
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [nameSaved, setNameSaved] = useState(false);
+  const nameChanged = name.trim() !== savedName;
   const [canEditLanding, setCanEditLanding] = useState(false);
   useEffect(() => {
     let current = true;
@@ -34,6 +40,30 @@ export function CloudAccount({ email }: { email: string }) {
     readLandingRole().then(role => { if (current) setCanEditLanding(!!role); }).catch(() => {});
     return () => { current = false; };
   }, [email]);
+  const saveName = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (savingName || !nameChanged) return;
+    const submittedName = name.trim();
+    setNameError('');
+    setNameSaved(false);
+    if (!submittedName || submittedName.length > 100) {
+      setNameError('Enter a name between 1 and 100 characters.');
+      return;
+    }
+    setSavingName(true);
+    try {
+      const result = await supabase!.auth.updateUser({ data: { full_name: submittedName } });
+      if (result.error) throw result.error;
+      setSavedName(submittedName);
+      // Keep edits made while this request was saving; they still need another save.
+      setName(current => current.trim() === submittedName ? submittedName : current);
+      setNameSaved(true);
+    } catch {
+      setNameError('Could not update your name. Your changes are still here; please try again.');
+    } finally {
+      setSavingName(false);
+    }
+  };
   const logOut = async () => {
     setBusy(true);
     const { error } = await supabase!.auth.signOut({ scope: 'local' });
@@ -45,11 +75,21 @@ export function CloudAccount({ email }: { email: string }) {
   };
   return <AccountCard title="Account settings">
     <p>Signed in as {email}</p>
+    <form className="account-form" onSubmit={saveName}>
+      <label>Name<input name="full-name" autoComplete="name" required maxLength={100}
+        value={name} onChange={event => { setName(event.target.value); setNameError(''); }} /></label>
+      {nameError && <p className="account-error" role="alert">{nameError}</p>}
+      {nameChanged && !savingName && <p role="status">You have unsaved name changes.</p>}
+      {nameSaved && !nameChanged && !savingName && <p role="status">Name updated.</p>}
+      <button type="submit" disabled={busy || savingName || !nameChanged}>
+        {savingName ? 'Saving name…' : 'Update name'}
+      </button>
+    </form>
     {error && <p className="account-error" role="alert">{error}</p>}
     <div className="preview-actions">
       <a className="preview-primary" href="/workspace">Return to workspace</a>
       {canEditLanding && <a href={landingStudioPath}>Content studio</a>}
-      <button type="button" onClick={logOut} disabled={busy}>{busy ? 'Logging out…' : 'Log out'}</button>
+      <button type="button" onClick={logOut} disabled={busy || savingName}>{busy ? 'Logging out…' : 'Log out'}</button>
     </div>
   </AccountCard>;
 }

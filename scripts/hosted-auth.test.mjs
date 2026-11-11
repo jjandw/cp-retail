@@ -339,6 +339,22 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   b.user = requireSuccess(await b.supabase.auth.signInWithPassword({ email: b.email, password }), 'Sign in second account').user;
   assert.equal(b.user.id, secondSignup.user.id);
   assert.notEqual(a.user.id, b.user.id);
+  await t.test('the account name persists in GoTrue without changing the other account', async () => {
+    await page.goto(callback + '/account');
+    await page.getByLabel('Name', { exact: true }).fill('Retail QA Owner');
+    await page.getByRole('button', { name: 'Update name', exact: true }).click();
+    await page.getByText('Name updated.', { exact: true }).waitFor();
+    await page.reload();
+    await page.getByLabel('Name', { exact: true }).waitFor();
+    assert.equal(await page.getByLabel('Name', { exact: true }).inputValue(), 'Retail QA Owner');
+    const owner = requireSuccess(await a.supabase.auth.getUser(), 'Read updated account name').user;
+    const other = requireSuccess(await b.supabase.auth.getUser(), 'Read other account name').user;
+    assert.equal(owner.user_metadata.full_name, 'Retail QA Owner');
+    assert.equal(other.user_metadata.full_name, b.user.user_metadata.full_name);
+    assert.equal(owner.email, a.email);
+    assert.ok(owner.email_confirmed_at, 'Name edits retain email verification');
+    await page.goto(callback + '/workspace');
+  });
   const scenario = {
     name: 'Synthetic promo', product_id: 'demo-snack-drink', reference_price: 95,
     unit_cost: 62.51, discount: 5, units: 1250, stock: 1350, period_days: 30,

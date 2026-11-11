@@ -1,0 +1,97 @@
+{
+  "sourceStylesheet": "https://fonts.softr-files.com/google/api/css?family=Inter:100,200,300,400,500,600,700,800,900,100i,200i,300i,400i,500i,600i,700i,800i,900i&display=block",
+  "licenseSource": "https://raw.githubusercontent.com/rsms/inter/master/LICENSE.txt",
+  "transformation": "Lossless WOFF2 compression; font metrics, cmap and names verified unchanged.",
+  "fonts": [
+    {
+      "file": "Inter-italic-400.woff2",
+      "style": "italic",
+      "weight": 400,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCM3FwrK3iLTcvneQg7Ca725JhhKnNqk4j1ebLhAm8SrXTc2dtRipWA.ttf",
+      "sourceSha256": "72a6e5d274641c5be347bc5d07e4c24fd66644c106223a3444337562353a1d84",
+      "bytes": 25040,
+      "sha256": "a28aeca207a2949eb6016fa2d2ff7898f1d2ad7ca77c4789afc6b3ffea86d049"
+    },
+    {
+      "file": "Inter-normal-100.woff2",
+      "style": "normal",
+      "weight": 100,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyeAZ9hjQ.ttf",
+      "sourceSha256": "a58875806962305219b52a406f2c12d803cbb43e05e2cf0576bc580bbffd1b04",
+      "bytes": 23320,
+      "sha256": "d2a1958003083fcb0daa997440e874bb9eb6eb75458056f59a5290c4cafa12d7"
+    },
+    {
+      "file": "Inter-normal-200.woff2",
+      "style": "normal",
+      "weight": 200,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuDyfAZ9hjQ.ttf",
+      "sourceSha256": "d6f57997e9e849e026c33882b5447374e028f954b14d427510ddf6c034362581",
+      "bytes": 23836,
+      "sha256": "ed0209b190b910af16fb4e05952bdf9e4b41e4898a521fbde5f85e8882f542a8"
+    },
+    {
+      "file": "Inter-normal-300.woff2",
+      "style": "normal",
+      "weight": 300,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuOKfAZ9hjQ.ttf",
+      "sourceSha256": "2dfcb6f984e0ed6f225d5298e6d56c8ba264a36424dc62e31f7d0f3f49f43175",
+      "bytes": 23976,
+      "sha256": "592f84a9db7676795da94632bba235eb4e12f06e512c65d0dec06eb2cef526ad"
+    },
+    {
+      "file": "Inter-normal-400.woff2",
+      "style": "normal",
+      "weight": 400,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hjQ.ttf",
+      "sourceSha256": "db2007cac3f58427030755b0ff368cceef98dc503cf6d3d2aa366a4743f9749f",
+      "bytes": 23704,
+      "sha256": "c539162635d1cdd2d1b625c56f292376f82302e956c92e7f45df36b8c240166b"
+    },
+    {
+      "file": "Inter-normal-500.woff2",
+      "style": "normal",
+      "weight": 500,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fAZ9hjQ.ttf",
+      "sourceSha256": "6906c67c75ca4ab456b46fa2a06150dcca99db018cccef86fd35183ac74b21e3",
+      "bytes": 24308,
+      "sha256": "e7a44d0ff366493873934b439d8bc2f87f4244e891057d6d19c013f0c0873b3c"
+    },
+    {
+      "file": "Inter-normal-600.woff2",
+      "style": "normal",
+      "weight": 600,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuGKYAZ9hjQ.ttf",
+      "sourceSha256": "1bfc2a55504add1a87771cde89865a8b1a2cf6137e4309e9e03cfa9134786f7f",
+      "bytes": 24372,
+      "sha256": "17b1bfec50e531195edfcaed56245acab819bc764f2eebf6c38abcb404901812"
+    },
+    {
+      "file": "Inter-normal-700.woff2",
+      "style": "normal",
+      "weight": 700,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYAZ9hjQ.ttf",
+      "sourceSha256": "16586b28b0432e68f0099445946195dc97909ff7744f764eed708b38e61ca6c9",
+      "bytes": 24280,
+      "sha256": "7dbd21858a9a3bf1a2d789f1158224dc3c8de814eff1d998716ed80fea16a1bf"
+    },
+    {
+      "file": "Inter-normal-800.woff2",
+      "style": "normal",
+      "weight": 800,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuDyYAZ9hjQ.ttf",
+      "sourceSha256": "5b608ee73c59a14777bba3863bcb4bf01d0888ca0ad94142ccd17edfb702749b",
+      "bytes": 24432,
+      "sha256": "9d6288631060368b2989d4e3c9ec2995c42c8f6aa9538b53df1130ff4af76048"
+    },
+    {
+      "file": "Inter-normal-900.woff2",
+      "style": "normal",
+      "weight": 900,
+      "source": "https://fonts.softr-files.com/google/static/s/inter/v20/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuBWYAZ9hjQ.ttf",
+      "sourceSha256": "98cb81a8ecd586ea2297735ec031b29bfbcd1d062f097600cfa09cdb640dd2b3",
+      "bytes": 23956,
+      "sha256": "a2630048feadb4a72c319e50be9760ad01155339b4ac370d1cacf1107b8405b0"
+    }
+  ]
+}

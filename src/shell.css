@@ -1,10 +1,16 @@
+@import url('/fonts/inter/inter.css');
+
 :root {
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cp-font: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--cp-font);
   color: #223b36;
   background: #f6f7f3;
 }
 
 body { margin: 0; }
+
+/* Softr supplied this inherited theme font outside the exported block. */
+#root .cp-retail, #root .cp-landing { font-family: var(--cp-font); }
 
 .preview-entry {
   min-height: 100vh;

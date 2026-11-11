@@ -53,7 +53,7 @@ export default function CloudApp({ path, landing, workspace }: {
     }
     return <SignedInWorkspace user={user} key={user.id}>{workspace}</SignedInWorkspace>;
   }
-  if (path === '/account') return user ? <CloudAccount email={user.email} /> : <Redirect to="/login" />;
+  if (path === '/account') return user ? <CloudAccount key={user.id} email={user.email} fullName={user.fullName} /> : <Redirect to="/login" />;
   if (path === '/login' || path === '/sign-up') {
     return user ? <Redirect to={path === '/login' ? workspaceDestination() : '/workspace'} /> :
       <CloudAuthForm mode={path === '/login' ? 'login' : 'sign-up'} recovery={false} />;
