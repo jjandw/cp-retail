@@ -446,6 +446,8 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
     await page.goto(callback + '/');
     await page.locator('.l-nav').getByRole('link', { name: 'Open workspace', exact: true }).waitFor();
     assert.equal(new URL(page.url()).pathname, '/');
+    await page.locator('.l-nav').getByRole('link', { name: 'Open workspace', exact: true }).click();
+    await page.waitForURL(callback + '/workspace');
   });
   await t.test('customer groups and Recommendations render saved Advisor answers', async () => {
     await verifyAdvisorScreens(page, signedIn, saved.id);
