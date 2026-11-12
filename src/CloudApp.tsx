@@ -38,8 +38,7 @@ export default function CloudApp({ path, landing, workspace }: {
   } : null;
 
   if (path === '/' || path === '/welcome') {
-    if (user) return <Redirect to="/workspace" />;
-    return landing;
+    return <WorkspaceIdentity.Provider value={user}>{landing}</WorkspaceIdentity.Provider>;
   }
   if (session === undefined) return <main className="preview-entry" role="status">Checking your session…</main>;
   if (path === landingStudioPath) {

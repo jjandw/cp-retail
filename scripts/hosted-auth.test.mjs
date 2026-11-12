@@ -435,6 +435,18 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   assert.equal(user.id, a.user.id);
   const retained = requireSuccess(await signedIn.from('scenarios').select('id').eq('id', saved.id).single(), 'Read scenario after recovery');
   assert.equal(retained.id, saved.id);
+  await t.test('signed-in members can revisit Welcome and return to their workspace', async () => {
+    await page.getByRole('link', { name: 'Welcome & help', exact: true }).click();
+    await page.waitForURL(callback + '/welcome');
+    await page.locator('.l-nav').getByRole('link', { name: 'Open workspace', exact: true }).waitFor();
+    await page.reload();
+    await page.locator('.l-nav').getByRole('link', { name: 'Open workspace', exact: true }).click();
+    await page.waitForURL(callback + '/workspace');
+    await page.getByRole('button', { name: 'My decisions', exact: true }).waitFor();
+    await page.goto(callback + '/');
+    await page.locator('.l-nav').getByRole('link', { name: 'Open workspace', exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, '/');
+  });
   await t.test('customer groups and Recommendations render saved Advisor answers', async () => {
     await verifyAdvisorScreens(page, signedIn, saved.id);
   });
