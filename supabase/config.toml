@@ -1,0 +1,5 @@
+project_id = "cp-retail"
+
+[functions.advisor]
+# The handler verifies the signed-in user's JWT with Supabase Auth before using the admin client.
+verify_jwt = false

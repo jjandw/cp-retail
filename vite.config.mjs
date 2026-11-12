@@ -1,6 +1,47 @@
 import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
+import { copyFile, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { defineConfig, loadEnv } from 'vite';
+import { staticPaths } from './src/lib/routes.mjs';
 
-export default defineConfig({
-  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+function publishable(key) {
+  if (key.startsWith('sb_publishable_')) return true;
+  try {
+    return JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString('utf8')).role === 'anon';
+  } catch {
+    return false;
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  const env = process.env.CF_PAGES_BRANCH && process.env.CF_PAGES_COMMIT_SHA
+    ? process.env
+    : loadEnv(mode, process.cwd(), 'VITE_SUPABASE_');
+  const url = env.VITE_SUPABASE_URL?.trim();
+  const key = env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+  if (Boolean(url) !== Boolean(key)) throw Error('Set both Supabase URL and publishable key to enable cloud accounts.');
+  if (key && !publishable(key)) throw Error('Use a Supabase publishable or legacy anon key in the frontend.');
+  if (mode === 'cloud') {
+    if (!url) throw Error('A cloud build requires the Supabase URL and publishable key.');
+    const endpoint = URL.canParse(url) ? new URL(url) : null;
+    if (!endpoint || endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) {
+      throw Error('A cloud build requires an HTTPS Supabase URL without credentials, query, or fragment.');
+    }
+  }
+  return {
+    resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+    plugins: [{
+      name: 'cp-retail-cloud-entry-routes',
+      apply: 'build',
+      async writeBundle({ dir }) {
+        if (mode !== 'cloud') return;
+        // Static hosts can serve password links and workspace deep links as directory indexes.
+        await Promise.all(staticPaths.map(async route => {
+          const target = join(dir, route.slice(1));
+          await mkdir(target, { recursive: true });
+          await copyFile(join(dir, 'index.html'), join(target, 'index.html'));
+        }));
+      },
+    }],
+  };
 });

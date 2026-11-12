@@ -2,9 +2,15 @@ import { opsModel, opsRound } from '@/lib/scenario-math.mjs';
 import React, { useState, useRef, useEffect } from 'react';
 import { BarChart3, LayoutDashboard, UploadCloud, Users, Sparkles, BookmarkCheck, ArrowRight, ArrowLeft, Download, CheckCircle2, ShieldCheck, Package, Search, Store, CalendarDays, RotateCcw, LogIn, Info, ChevronRight, AlertTriangle, DollarSign, Percent, ShoppingCart, Layers, HelpCircle, Menu, X, FileSpreadsheet, ClipboardCheck, Home, Target, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { NavigationAction } from '@/components/navigation-action';
-import { useNavigation, useNavigationSetting, useTextSetting } from '@/lib/editable-settings';
-import { datasource, q, useRecords, useRecord, useCurrentRecordId, useRecordCreate, useRecordUpdate, useLinkedRecords } from '@/lib/datasource';
+import { useNavigationSetting, useTextSetting } from '@/lib/editable-settings';
+import { datasource, q, useRecords, useRecord, useRecordCreate, useRecordUpdate, useLinkedRecords } from '@/lib/datasource';
+import { workspaceHref, workspaceLocation } from '@/lib/routes.mjs';
 import { useCurrentUser } from '@/lib/user';
+import { advisorEnabled, cloudEnabled, wakeAdvisorReview as opsWakeCloud } from '@/lib/supabase-client';
+
+const storageLabel = cloudEnabled ? 'Workspace storage' : 'Browser storage';
+const saveDataLabel = cloudEnabled ? 'Save to my account' : 'Save in this browser';
+const savedLocation = cloudEnabled ? 'to your account' : 'in this browser';
 
 const ds = datasource.define({ scenarios: 'scenarios', decisions: 'decisions', aiRequests: 'aiRequests', datasets: 'datasets', feedback: 'feedback', advisorVotes: 'advisorVotes' });
 
@@ -264,6 +270,14 @@ const css = `
 .cp-retail .sidebar{background:#0c1715;color:#a7b8b3}
 .cp-retail .sidebar .brand strong,.cp-retail .sidebar .brand{color:#eef5f2}
 .cp-retail .sidebar .eyebrow,.cp-retail .brand-subtitle{color:#7f938e}
+.cp-retail .sidebar .side-bottom{border-top-color:#263d36}
+.cp-retail .sidebar .account-identity strong{color:#eef5f2}
+.cp-retail .sidebar .account-identity p{color:#a7b8b3}
+.cp-retail .sidebar .side-bottom .btn{background:transparent;color:#c6d5cf;border-color:transparent;box-shadow:none}
+.cp-retail .sidebar .side-bottom .btn:hover{background:rgba(255,255,255,.06);color:#eef5f2}
+.cp-retail .sidebar .side-bottom .btn:focus-visible{outline-color:#5fd3ae}
+.cp-retail .sidebar .side-bottom .account-settings{text-decoration:none}
+.cp-retail .sidebar .side-bottom .welcome-help{border-top-color:#263d36}
 .cp-retail .nav-button{color:#a7b8b3;border-radius:10px;font-size:13px;transition:background .2s ease,color .2s ease,transform .1s ease-out}
 .cp-retail .nav-button:hover{background:rgba(255,255,255,.06);color:#eef5f2}
 .cp-retail .nav-button.active{background:rgba(95,211,174,.16);color:#eef5f2;font-weight:650;box-shadow:inset 2px 0 0 #5fd3ae}
@@ -522,35 +536,30 @@ function CreateScenario({user,onCancel,onCreated}: any) {
   </div>;
 }
 
-function ConnectedScenarios({loginLink,originalPage,openDemo,backToList,ignoreRecordId,onRecommend,initialRecordId}: any) {
+function ConnectedScenarios({loginLink,openDemo,backToList,onRecommend,onOpenScenario,recordId}: any) {
   const user = useCurrentUser();
-  const currentRecordId = useCurrentRecordId();
-  const [selectedId,setSelectedId]=useState<string|null>(initialRecordId||null);
-  const [ignoreLinked,setIgnoreLinked]=useState(!!ignoreRecordId);
-  const activeId=selectedId || (ignoreLinked?null:currentRecordId);
   const rowLink=useNavigationSetting({name:'saved-scenario-row-link',label:'Saved scenario row destination',initialValue:{destination:'/pixso-preview',openIn:'SELF'}});
   const [search,setSearch] = useState('');
   const [showCreate,setShowCreate] = useState(false);
   const [savedNotice,setSavedNotice] = useState('');
-  const navigate=useNavigation();
   const title=useTextSetting({name:'saved-scenarios-title',label:'Saved scenario list title',initialValue:'My Scenarios'});
   const {data,status,error,refetch,isRefetching,hasNextPage,fetchNextPage,isFetchingNextPage} = useRecords({from:ds.scenarios,
     select:savedScenarioSelect,
     where:q.and(q.text('owner').is(user?.email ?? ''),q.text('owner').isNotEmpty()),
-    orderBy:q.desc('createdAt'),count:20,enabled:!!user?.email && !activeId,
+    orderBy:q.desc('createdAt'),count:20,enabled:!!user?.email && !recordId,
   });
   const back=backToList;
   const records = (data?.pages.flatMap(p=>p.items) ?? []).filter(item=>!!user?.email && dbText(item.fields.owner).toLowerCase()===user.email.toLowerCase());
   const visible = records.filter(item=>[dbText(item.fields.name),dbText(item.fields.product),dbText(item.fields.comparisonGroup)].join(' ').toLowerCase().includes(search.trim().toLowerCase()));
   if (!user?.email) return <AuthGate loginLink={loginLink} title="Sign in to My Scenarios" description="Create and view your saved scenarios with your account." openDemo={openDemo}/>;
-  if (showCreate) return <CreateScenario user={user} onCancel={()=>setShowCreate(false)} onCreated={(record:any)=>{setShowCreate(false);setSavedNotice('Scenario saved successfully.');if(record?.id){setSelectedId(record.id);setIgnoreLinked(false);navigate(rowLink,{recordId:record.id,datasourceId:'scenarios'});}else{setSelectedId(null);setIgnoreLinked(true);void refetch();}}}/>;
-  if (activeId) return <SavedScenarioDetail key={user.email+':'+activeId} recordId={activeId} email={user.email} back={back} onCreate={()=>setShowCreate(true)} onRecommend={onRecommend}/>;
+  if (showCreate) return <CreateScenario user={user} onCancel={()=>setShowCreate(false)} onCreated={(record:any)=>{setShowCreate(false);setSavedNotice('Scenario saved successfully.');if(record?.id)onOpenScenario(record.id);else if(recordId)back();else void refetch();}}/>;
+  if (recordId) return <SavedScenarioDetail key={user.email+':'+recordId} recordId={recordId} email={user.email} back={back} onCreate={()=>setShowCreate(true)} onRecommend={onRecommend}/>;
   return <div className="stack">
-    <div className="page-head"><div className="stack" style={{gap:9}}><div className="row"><h1>{title}</h1><Pill tone="green">Browser storage</Pill></div><p>Create a starting scenario, then compare changes in Recommendations.</p><p className="small muted">Signed in as {user.fullName || user.email} · Only your records are shown.</p></div><div className="row"><button className="btn" disabled={isRefetching} onClick={()=>refetch()}><RotateCcw size={14}/>{isRefetching?'Refreshing…':'Refresh records'}</button><button type="button" className="btn primary" onClick={()=>setShowCreate(true)}>Create scenario <ArrowRight size={14}/></button></div></div>
+    <div className="page-head"><div className="stack" style={{gap:9}}><div className="row"><h1>{title}</h1><Pill tone="green">{storageLabel}</Pill></div><p>Create a starting scenario, then compare changes in Recommendations.</p><p className="small muted">Signed in as {user.fullName || user.email} · Only your records are shown.</p></div><div className="row"><button className="btn" disabled={isRefetching} onClick={()=>refetch()}><RotateCcw size={14}/>{isRefetching?'Refreshing…':'Refresh records'}</button><button type="button" className="btn primary" onClick={()=>setShowCreate(true)}>Create scenario <ArrowRight size={14}/></button></div></div>
     {savedNotice&&<div className="notice" role="status">{savedNotice}</div>}
     <details className="data-note"><summary>About these scenarios</summary><p>These are your saved database records. Values use simulated coursework assumptions. The original Pixso example is under Explore sample screens.</p></details>
     <div className="row between"><label className="scenario-search" style={{minWidth:0,width:340,maxWidth:'100%'}}>Search saved scenarios<input className="input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Scenario, product or comparison group…"/></label><span className="small muted">{visible.length} of {records.length} loaded records{hasNextPage?' · More available':''}</span></div>
-    {status==='pending'?<div className="panel" role="status">Loading your saved scenarios…</div>:status==='error'?<div className="panel stack" role="alert"><h2>Unable to load scenarios</h2><p className="muted">The database could not be reached. Please try again.</p><button className="btn" onClick={()=>refetch()}>Try again</button></div>:visible.length===0?<div className="panel stack" role="status"><div className="row" style={{alignItems:'flex-start',gap:16}}><div aria-hidden="true" style={{width:120,height:120,overflow:'hidden',pointerEvents:'none',flexShrink:0}}><img src="/studio-media/86599a08-7339-4317-b98d-61094eb2268c.png" alt="" style={{position:'relative',width:606.28,height:353.72,left:-166.15,top:-160.62,maxWidth:'none'}}/></div><div className="stack" style={{gap:8}}><h2>{search?'No matching scenarios':'No saved scenarios yet'}</h2><p className="muted">{search?'Try another name, product or comparison group.':'Create your first set of assumptions here.'}</p>{search&&<button className="btn" onClick={()=>setSearch('')}>Clear search</button>}</div></div></div>:<div className="table-wrap"><table className="db-table scenario-table"><thead><tr><th>Scenario / product</th><th>Discount / period</th><th>Revenue (THB)</th><th>Gross profit (THB)</th><th>Cost & stock</th><th>Details</th></tr></thead><tbody>{visible.map(item=><tr key={item.id}><td><strong>{dbText(item.fields.name)||'Untitled scenario'}</strong><p className="small muted" style={{marginTop:5}}>{dbText(item.fields.product)||'Product not provided'}</p><p className="small muted">{dbDate(item.fields.createdAt)}</p></td><td>{dbUnits(item.fields.discount)}%<p className="small muted">{dbUnits(item.fields.period)} days</p></td><td>{dbMoney(item.fields.revenue)}</td><td>{dbMoney(item.fields.grossProfit)}</td><td><ScenarioChecks fields={item.fields}/></td><td><span onClickCapture={()=>{setSelectedId(item.id);setIgnoreLinked(false);}}><NavigationAction navigation={rowLink} recordId={item.id} datasourceId="scenarios" className="btn">View details <ChevronRight size={14}/></NavigationAction></span></td></tr>)}</tbody></table></div>}
+    {status==='pending'?<div className="panel" role="status">Loading your saved scenarios…</div>:status==='error'?<div className="panel stack" role="alert"><h2>Unable to load scenarios</h2><p className="muted">The database could not be reached. Please try again.</p><button className="btn" onClick={()=>refetch()}>Try again</button></div>:visible.length===0?<div className="panel stack" role="status"><div className="row" style={{alignItems:'flex-start',gap:16}}><div aria-hidden="true" style={{width:120,height:120,overflow:'hidden',pointerEvents:'none',flexShrink:0}}><img src="/studio-media/86599a08-7339-4317-b98d-61094eb2268c.png" alt="" style={{position:'relative',width:606.28,height:353.72,left:-166.15,top:-160.62,maxWidth:'none'}}/></div><div className="stack" style={{gap:8}}><h2>{search?'No matching scenarios':'No saved scenarios yet'}</h2><p className="muted">{search?'Try another name, product or comparison group.':'Create your first set of assumptions here.'}</p>{search&&<button className="btn" onClick={()=>setSearch('')}>Clear search</button>}</div></div></div>:<div className="table-wrap"><table className="db-table scenario-table"><thead><tr><th>Scenario / product</th><th>Discount / period</th><th>Revenue (THB)</th><th>Gross profit (THB)</th><th>Cost & stock</th><th>Details</th></tr></thead><tbody>{visible.map(item=><tr key={item.id}><td><strong>{dbText(item.fields.name)||'Untitled scenario'}</strong><p className="small muted" style={{marginTop:5}}>{dbText(item.fields.product)||'Product not provided'}</p><p className="small muted">{dbDate(item.fields.createdAt)}</p></td><td>{dbUnits(item.fields.discount)}%<p className="small muted">{dbUnits(item.fields.period)} days</p></td><td>{dbMoney(item.fields.revenue)}</td><td>{dbMoney(item.fields.grossProfit)}</td><td><ScenarioChecks fields={item.fields}/></td><td><NavigationAction navigation={rowLink} recordId={item.id} datasourceId="scenarios" className="btn">View details <ChevronRight size={14}/></NavigationAction></td></tr>)}</tbody></table></div>}
     {hasNextPage&&<button className="btn" disabled={isFetchingNextPage} onClick={()=>fetchNextPage()}>{isFetchingNextPage?'Loading…':'Load more records'}</button>}
     <p className="small muted">Gross profit is unavailable when cost is unknown. Negative remaining stock means the assumed volume cannot be fulfilled from the stated stock.</p>
   </div>;
@@ -637,7 +646,7 @@ function ConnectedDecisions({loginLink,openDemo,openScenarios}:any) {
       created=await createDecision.mutateAsync({name:form.name.trim(),reason:form.reason.trim(),owner:user.email,scenario:[scenario.id],decidedBy:[matchingCreators[0].id],snapshot});
     } catch(err:any) {setError(err?.message || 'Could not save this decision. Your inputs are still here.');return;}
     finally {busy.current=false;}
-    setForm({name:'',scenario:'',reason:''});setSelectedId(created?.id ?? null);setMode(created?.id?'detail':'list');setError('');setNotice('Pending decision saved in this browser.');
+    setForm({name:'',scenario:'',reason:''});setSelectedId(created?.id ?? null);setMode(created?.id?'detail':'list');setError('');setNotice('Pending decision saved ' + savedLocation + '.');
     const refreshed=await decisions.refetch();
     if(refreshed.error) setNotice('Decision saved, but the list could not be refreshed. Use Refresh records to load it.');
   };
@@ -703,7 +712,7 @@ function ConnectedDecisions({loginLink,openDemo,openScenarios}:any) {
     </section>}
   </div>;
   return <div className="stack">
-    <div className="page-head"><div className="stack" style={{gap:9}}><div className="row"><h1>My Decisions</h1><Pill tone="green">Browser storage</Pill></div><p>Review decisions linked to your saved scenarios.</p><p className="small muted">Signed in as {user.fullName || user.email} · Only your records are shown.</p></div><div className="row"><button className="btn" disabled={decisions.isRefetching} onClick={()=>decisions.refetch()}><RotateCcw size={14}/>{decisions.isRefetching?'Refreshing…':'Refresh records'}</button><button className="btn primary" onClick={()=>{setError('');setNotice('');setMode('create');}}>New decision <ArrowRight size={14}/></button></div></div>
+    <div className="page-head"><div className="stack" style={{gap:9}}><div className="row"><h1>My Decisions</h1><Pill tone="green">{storageLabel}</Pill></div><p>Review decisions linked to your saved scenarios.</p><p className="small muted">Signed in as {user.fullName || user.email} · Only your records are shown.</p></div><div className="row"><button className="btn" disabled={decisions.isRefetching} onClick={()=>decisions.refetch()}><RotateCcw size={14}/>{decisions.isRefetching?'Refreshing…':'Refresh records'}</button><button className="btn primary" onClick={()=>{setError('');setNotice('');setMode('create');}}>New decision <ArrowRight size={14}/></button></div></div>
     {notice&&<div className="notice" role="status">{notice}</div>}
     <div className="notice"><ShieldCheck size={19}/><p className="small">These are saved Decisions database records. The sample decision log remains a separate walkthrough.</p></div>
     <label style={{width:340,maxWidth:'100%'}}>Search my decisions<input className="input" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Decision, scenario or status…"/></label>
@@ -1063,9 +1072,8 @@ function opsAiWaitState(status, startedAt, now) {
   return {waiting, elapsedSeconds:Math.floor(elapsed / 1000), delayed:waiting && elapsed >= OPS_AI_WAIT_MS};
 }
 
-async function opsWakeCloud(_recordId: string) {}
 const opsAiSelect=q.select({name:'cMQ0c',owner:'jeWoT',sourceId:'H6ZBD',context:'02Rf3',answer:'TSTsb',requestStatus:'cP2Qs',errorMessage:'Vwg10',fingerprint:'KSpPc',createdAt:'zUKuD',answeredAt:'ijPNc'});
-const opsAiCreateFields=q.select({name:'cMQ0c',owner:'jeWoT',sourceId:'H6ZBD',context:'02Rf3',requestStatus:'cP2Qs',fingerprint:'KSpPc'});
+const opsAiCreateFields=q.select({name:'cMQ0c',sourceId:'H6ZBD',context:'02Rf3',fingerprint:'KSpPc'});
 
 async function opsAiAwait(promise:any,ms=8000) {
   let timer:any;
@@ -1146,7 +1154,7 @@ function RecommendationAi({run,email,sourceId,onEvidence,disabled}:any) {
       if(reusable){if(dbText(reusable.fields.requestStatus)!=='Completed')void opsWakeCloud(reusable.id);setLocalId(reusable.id);setNow(Date.now());setPollUntil(Date.now()+OPS_AI_WAIT_MS);return;}
       if(history.hasNextPage){setError('The matching history is too large to check safely. Refresh the page before requesting again.');return;}
       submitted=true;
-      const created=await opsAiAwait(createRequest.mutateAsync({name:'Decision review '+new Date().toISOString(),owner:email,sourceId,context,requestStatus:'e2f1ba8c-0d5e-4ee7-8933-09c308ae0f4b',fingerprint}),10000);
+      const created=await opsAiAwait(createRequest.mutateAsync({name:'Decision review '+new Date().toISOString(),sourceId,context,fingerprint}),10000);
       if(!created?.id){setUncertain(true);setError('The request save could not be confirmed. Check for an answer; another submission is paused to avoid duplicate requests.');return;}
       confirmedId=created.id;void opsWakeCloud(created.id);setLocalId(created.id);setNow(Date.now());setPollUntil(Date.now()+OPS_AI_WAIT_MS);await opsAiAwait(history.refetch());
     }catch{if(submitted&&!confirmedId){setUncertain(true);setError('The request save could not be confirmed. Check the saved review; another submission is paused to avoid duplicate requests.');}else{setError(confirmedId?'The request is saved. Its status could not be loaded; check the saved review later.':'The request history took too long to load. No AI request was sent. Check again before requesting a review.');}}
@@ -1155,7 +1163,7 @@ function RecommendationAi({run,email,sourceId,onEvidence,disabled}:any) {
   const checkAnswer=async()=>{if(pending?.id||localId)void opsWakeCloud(pending?.id||localId);setError('');setNow(Date.now());setPollUntil(Date.now()+OPS_AI_WAIT_MS);try{const refreshed=await opsAiAwait(history.refetch());if(refreshed.error){setError('The review could not be loaded. Try checking again.');return;}if(opsAiMatchingRows(refreshed.data,email,context,fingerprint).length)setUncertain(false);}catch{setError('The status check took too long. Immediate checks and scenario saving remain available.');}};
   return <section className="ops-ai v2-advisor-review" aria-labelledby="ops-ai-title">
     <div className="ops-ai-heading"><div><span className="v2-advisor-name"><Sparkles size={14}/>CP Retail Advisor · before you decide</span><h3 id="ops-ai-title">Decision readiness review</h3></div>{status&&<span className="ops-ai-status" role="status">{status==='Completed'?'AI review saved':waitState.delayed?'AI review delayed':status==='Processing'?'AI is reviewing':status==='Queued'?'Review queued':status==='Failed'?'AI review unavailable':status}</span>}</div>
-    <p className="ops-ai-intro">Check how much demand the proposed action needs and what happens if sales disappoint. Cloud AI is pending migration. The checks below are calculated in this browser.</p>
+    <p className="ops-ai-intro">Check how much demand the proposed action needs and what happens if sales disappoint. {advisorEnabled ? 'The Advisor can prioritise your next checks.' : 'Cloud AI is unavailable in this build.'} The checks below are calculated in this browser.</p>
     {review&&<div className="ops-readiness"><p className="small muted"><strong>Immediate checks · calculated locally</strong> · These concern the rule-selected action and are sensitivity calculations, not AI output or forecasts.</p><div className="ops-readiness-grid">{review.checks.map((item:any)=><article key={item.id}><h4>{item.title}</h4><p>{item.detail}</p><p className="small muted">Next step: {item.action}</p></article>)}</div></div>}
     {contextError?<p className="notice warn" role="status">{contextError}</p>:<>
       {answer?<><div className="ops-ai-answer" aria-live="polite">{answer}</div><p className="small muted">AI ranks the review priorities; all amounts are calculated and checked. {answeredAt?'Saved '+dbDate(answeredAt)+'. ':''}The review is captured with a scenario you save. It does not approve a decision.</p><div className="v2-advisor-foot"><AdvisorVote surface="decision" requestId={completedId} aiAnswered/></div></>:waiting?<div className="ops-ai-wait" role="status">{!waitState.delayed&&polling&&<span className="ops-ai-line"/>}<p>{waitState.delayed?'The AI review has not returned within 30 seconds. Continue with the immediate checks above and save a scenario, or check this same request later. The cloud service can finish while your computer is closed.':(status==='Processing'?'DeepSeek is choosing the review priorities.':'The request is saved and queued for cloud processing.')+' '+waitState.elapsedSeconds+'s elapsed. You can continue using the immediate checks.'}</p>{localId&&!matchingLocal&&<p className="small muted">Request saved; waiting for it to appear in the history.</p>}</div>:status==='Failed'?<div className="notice warn" role="status"><p>{dbText(latest?.fields.errorMessage).slice(0,240)||'The AI review could not finish. Use the immediate checks and check the cloud review status.'} A new request may use the group allowance again.</p></div>:<p className="small muted">DeepSeek receives only numeric assumptions and calculated outcomes. It prioritises validation work; it cannot change the calculations, place orders or approve decisions.</p>}
@@ -1363,7 +1371,7 @@ function OperationalRecommendations({initialSourceId,initialProfile,onProfiles,l
 // END OPS FEATURE
 
 // BEGIN AUTH ENTRY
-// This section is inlined by apply_auth_entry; authentication stays with Softr.
+// Workspace account controls use the standalone sign-in and account routes.
 type AuthEntryUser = ReturnType<typeof useCurrentUser>;
 type AuthEntryNavigation = ReturnType<typeof useNavigationSetting>;
 
@@ -1443,18 +1451,21 @@ function AuthEntry({brand,user,loginLink,onContinue,onExplore}: {
         <section className="auth-entry-card" aria-labelledby="auth-entry-account-title">
           <p className="eyebrow">{signedIn?'Your account':'Account access'}</p>
           <h2 id="auth-entry-account-title">{signedIn?'Welcome back':'Sign in to your workspace'}</h2>
-          <p className="muted">{signedIn?'Continue with your saved scenarios and decisions.':'Use your email and password to access your saved scenarios and decisions.'}</p>
+          <p className="muted">{cloudEnabled
+            ? 'Use your CP Retail account to access scenarios and decisions saved in Supabase.'
+            : 'This demo saves scenarios and decisions in this browser.'}</p>
+          {advisorEnabled&&<p className="muted">When you request an Advisor review, CP Retail sends customer-group summaries or numerical scenario assumptions and results to DeepSeek.</p>}
           {signedIn&&<AccountSummary user={user}/>}
           {signedIn?<button type="button" className="btn primary auth-entry-primary" onClick={onContinue}>Continue to My Scenarios <ArrowRight size={16}/></button>:<NavigationAction navigation={loginLink} className="btn primary auth-entry-primary"><LogIn size={16}/>Sign in <ArrowRight size={16}/></NavigationAction>}
           {signedIn?<AccountNavigation user={user} loginLink={loginLink}>Account settings</AccountNavigation>:<AuthSecondaryLinks/>}
         </section>
         <details className="auth-entry-demo">
           <summary><HelpCircle size={16} aria-hidden="true"/><span>Just exploring?</span></summary>
-          <div><p>Browse the original sample screens with synthetic data. This preview does not sign you in or open saved account records.</p><button type="button" className="btn" onClick={onExplore}>Explore sample screens <ArrowRight size={15}/></button></div>
+          <div><p>Explore the sample store with synthetic transactions.</p><button type="button" className="btn" onClick={onExplore}>Explore sample screens <ArrowRight size={15}/></button></div>
         </details>
       </div>
     </main>
-    <footer className="auth-entry-footer"><span>Coursework prototype · No live CP connection</span><span>Saved work requires an account.</span></footer>
+    <footer className="auth-entry-footer"><span>Coursework prototype · No live CP connection</span><span>{cloudEnabled ? 'Saved work requires an account.' : 'Demo work stays in this browser.'}</span></footer>
   </section>;
 }
 // END AUTH ENTRY
@@ -1851,7 +1862,7 @@ function CustomerProfiling({state,setState,onPlan,onCreate,onProfiles,mode='prof
   const selected=analysis?.profiles.find((p:any)=>p.customerId===selectedCustomer);
   const chosen=analysis?.segments.find((s:any)=>s.id===segment);
   useEffect(()=>{if(segment!=='all')emitTestEvent('segment-selected');},[segment]);
-  const draft=(key:string,value:any)=>{setState((old:any)=>({...old,[key]:value,analysis:null,...(key==='csv'?{origin:'Pasted CSV'}:{})}));setErrors([]);setSelectedCustomer('');};
+  const draft=(key:string,value:any)=>{setState((old:any)=>({...old,[key]:value,analysis:null,...(key==='csv'?{origin:'Pasted CSV',source:DATASET_SOURCE.upload}:{})}));setErrors([]);setSelectedCustomer('');};
   const analyze=(event?:React.FormEvent)=>{
     event?.preventDefault();setErrors([]);setSelectedCustomer('');
     const parsed=parseProfileCsv(state.csv);
@@ -1865,7 +1876,7 @@ function CustomerProfiling({state,setState,onPlan,onCreate,onProfiles,mode='prof
   const readFile=async(event:React.ChangeEvent<HTMLInputElement>)=>{
     const file=event.target.files?.[0];if(!file)return;
     setErrors([]);setReading(true);setState((old:any)=>({...old,analysis:null}));
-    try{if(!file.name.toLowerCase().endsWith('.csv'))throw Error('Choose a CSV file. Spreadsheet files need to be exported as CSV first.');if(file.size>250000)throw Error('Choose a CSV file smaller than 250 KB.');const csv=await file.text();setState((old:any)=>({...old,csv,origin:'Imported CSV',analysis:null}));setSelectedCustomer('');}
+    try{if(!file.name.toLowerCase().endsWith('.csv'))throw Error('Choose a CSV file. Spreadsheet files need to be exported as CSV first.');if(file.size>250000)throw Error('Choose a CSV file smaller than 250 KB.');const csv=await file.text();setState((old:any)=>({...old,csv,origin:'Imported CSV',source:DATASET_SOURCE.upload,analysis:null}));setSelectedCustomer('');}
     catch(err:any){setErrors([err?.message||'The file could not be read.']);}
     finally{setReading(false);event.target.value='';}
   };
@@ -1880,7 +1891,7 @@ function CustomerProfiling({state,setState,onPlan,onCreate,onProfiles,mode='prof
     {dataPanel}<form className="profile-import" onSubmit={analyze} noValidate>
       <div className="row between"><div><h2>Transaction data</h2><p className="small muted">One completed transaction per row. Maximum 2,000 rows.</p></div><div className="row"><input type="file" accept=".csv,text/csv" ref={fileRef} onChange={readFile} aria-label="Import transaction CSV" className="profile-file"/><button type="button" className="btn" onClick={()=>fileRef.current?.click()} disabled={reading}>{reading?'Reading CSV…':'Choose CSV'}</button><button type="button" className="btn" onClick={loadSample} disabled={reading}>Use sample data</button></div></div>
       <label>Transactions CSV<textarea className="input profile-csv" aria-label="Transactions CSV" spellCheck={false} maxLength={250000} value={state.csv} onChange={e=>draft('csv',e.target.value)} disabled={reading}/></label>
-      <details className="profile-schema"><summary>CSV format and data handling</summary><p>Use these columns: <code>transaction_id,customer_id,purchased_on,amount_thb</code>, plus an optional <code>category</code> column. Dates use YYYY-MM-DD; amounts are positive THB with up to two decimals. Transaction IDs must be unique. Use pseudonymous customer IDs, such as CUST-101, and omit names, email addresses and phone numbers.</p><p>Rows are checked before analysis. Invalid data blocks the calculation; no rows are silently repaired. Analysed transactions stay in this session until you choose Save in this browser, which stores the CSV, including its pseudonymous customer IDs, in this browser’s preview storage. Only a selected segment summary is stored with a new scenario. No raw transaction rows or customer IDs are sent to DeepSeek.</p><button type="button" className="btn" onClick={()=>download('transaction-template.csv','transaction_id,customer_id,purchased_on,amount_thb\nTX-001,CUST-101,2026-10-31,95.00\n')}>Download CSV template <Download size={14}/></button></details>
+      <details className="profile-schema"><summary>CSV format and data handling</summary><p>Use these columns: <code>transaction_id,customer_id,purchased_on,amount_thb</code>, plus an optional <code>category</code> column. Dates use YYYY-MM-DD; amounts are positive THB with up to two decimals. Transaction IDs must be unique. Use pseudonymous customer IDs, such as CUST-101, and omit names, email addresses and phone numbers.</p><p>Rows are checked before analysis. Invalid data blocks the calculation; no rows are silently repaired. Analysed transactions stay in this session until you choose {saveDataLabel}, which stores the CSV, including its pseudonymous customer IDs, {cloudEnabled ? 'with your account' : 'in this browser'}. Only a selected segment summary is stored with a new scenario. No raw transaction rows or customer IDs are sent to DeepSeek.</p><button type="button" className="btn" onClick={()=>download('transaction-template.csv','transaction_id,customer_id,purchased_on,amount_thb\nTX-001,CUST-101,2026-10-31,95.00\n')}>Download CSV template <Download size={14}/></button></details>
       <div className="profile-controls"><label>Analysis date<input className="input" type="date" value={state.asOf} onChange={e=>draft('asOf',e.target.value)} disabled={reading}/></label><label>Lookback window<select className="input" value={state.windowDays} onChange={e=>draft('windowDays',e.target.value)} disabled={reading}><option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option></select></label><button type="submit" className="btn primary" disabled={reading}>Analyze transactions <ArrowRight size={15}/></button><button type="button" className="profile-text-btn" disabled={reading} onClick={()=>{draft('csv','transaction_id,customer_id,purchased_on,amount_thb\n');setSegment('all');}}>Clear data</button></div>
       {errors.length>0&&<div className="profile-error" role="alert"><strong>Check the transaction data</strong><ul>{errors.slice(0,8).map((e,i)=><li key={i}>{e}</li>)}</ul>{errors.length>8&&<p>{errors.length-8} more errors. Correct the CSV and analyze again.</p>}</div>}
       {!analysis&&errors.length===0&&<p className="small muted" role="status">{reading?'Reading your file.':'Analyze to apply the current data, date and window.'}</p>}
@@ -1916,6 +1927,7 @@ function BrandMark({size=34,className=''}:{size?:number;className?:string}) {
 // Deterministic simulated convenience-store transactions for the CP Retail demo store.
 // Parameters are team assumptions, not CP or retailer data.
 const DEMO_STORE_MARKER = 'demo:207';
+const HISTORICAL_DEMO_STORE_MARKER = 'demo:207:softr';
 const DEMO_STORE_AS_OF = '2026-11-05';
 const DEMO_STORE_NAME = 'Demo store (simulated)';
 const DEMO_CATEGORIES = Object.freeze(['Breakfast', 'Coffee', 'Snacks', 'Drinks', 'Ready meals']);
@@ -2376,15 +2388,12 @@ const datasetSelect = q.select({name:'NAtCh', owner:'nHOGb', source:'q2Y8k', csv
 const datasetCreateFields = q.select({name:'NAtCh', owner:'nHOGb', source:'q2Y8k', csv:'p7uW5', rows:'oPGHK', asOf:'7fsWK', windowDays:'8ucyJ'});
 const feedbackCreateFields = q.select({name:'4FQWC', owner:'Vhyro', completed:'GUpre', tasksJson:'fbz4j', clarity:'BWmF4', usefulness:'Txzzg', trust:'migJX', comment:'DuL4m', appVersion:'daLng'});
 const advisorVoteFields = q.select({name:'gmvg6', owner:'ETHAd', surface:'eVte2', vote:'BFDnY', segmentId:'3WoL9', requestId:'8VCpn', aiAnswered:'OGNn3', appVersion:'sd63q'});
-const DATASET_SOURCE = {demo:'ec13f288-7cc5-400c-bf09-cba24fd096c8', upload:'17195df6-9d2d-4097-a152-d5cc358978b0'};
-const AI_QUEUED = 'e2f1ba8c-0d5e-4ee7-8933-09c308ae0f4b';
+const DATASET_SOURCE = {demo:'demo', upload:'upload'};
 const DATASET_MAX_CHARS = 100000;
-const APP_VERSION = 'standalone-preview-2026-11-10';
+const APP_VERSION = cloudEnabled ? 'standalone-supabase-2026-11-10' : 'standalone-preview-2026-11-10';
 const PROFILE_TABLE_ROWS = 20;
 
 function emitTestEvent(type: string, extra?: any) { try { window.dispatchEvent(new CustomEvent('cp-test-event', {detail: {...(extra || {}), type}})); } catch {} }
-
-function profileAiEnabled() { return Promise.resolve(false); }
 
 // Group explanation from the cloud AI. A saved answer for the same numbers is reused, so each
 // user asks once per dataset and group; auto asks as soon as the page shows the advice.
@@ -2393,33 +2402,33 @@ function useGroupAi(context: any, sourceId: string, auto: boolean) {
   const email = user?.email ?? '';
   const text = context ? JSON.stringify(context) : '';
   const fingerprint = text ? opsAiFingerprint(text) : '';
-  const [aiReady, setAiReady] = useState(false);
+  const aiReady = advisorEnabled;
   const [requested, setRequested] = useState('');
   const [polls, setPolls] = useState(0);
   const asked = useRef('');
   const history = useRecords({from: ds.aiRequests, select: opsAiSelect, where: q.and(q.text('owner').is(email), q.text('owner').isNotEmpty(), q.text('fingerprint').is(fingerprint)), orderBy: q.desc('createdAt'), count: 20, enabled: !!email && !!text});
   const createRequest = useRecordCreate({from: ds.aiRequests, fields: opsAiCreateFields});
-  useEffect(() => { let live = true; profileAiEnabled().then(ok => { if (live) setAiReady(ok); }); return () => { live = false; }; }, []);
   useEffect(() => { asked.current = ''; setRequested(''); setPolls(0); }, [text]);
   const rows = opsAiMatchingRows(history.data, email, text, fingerprint);
   const done = rows.find((r: any) => dbText(r.fields.requestStatus) === 'Completed' && !!dbText(r.fields.answer).trim());
   const pending = rows.find((r: any) => ['Queued', 'Processing'].includes(dbText(r.fields.requestStatus)));
   const failed = !done && !pending && rows.some((r: any) => dbText(r.fields.requestStatus) === 'Failed');
   const answer = done ? dbText(done.fields.answer).slice(0, 4000) : '';
-  const request = async () => {
-    if (!text || answer || asked.current === text || !aiReady || !createRequest.enabled || !email) return;
-    asked.current = text;
+  const request = async (manual = true) => {
+    if (!text || answer || !aiReady || !createRequest.enabled || !email) return;
     if (pending) { void opsWakeCloud(pending.id); setRequested(text); setPolls(0); return; }
+    if (asked.current === text && !(manual && failed)) return;
+    asked.current = text;
     try {
-      const created: any = await createRequest.mutateAsync({name: 'Group explanation ' + new Date().toISOString(), owner: email, sourceId, context: text, requestStatus: AI_QUEUED, fingerprint});
+      const created: any = await createRequest.mutateAsync({name: 'Group explanation ' + new Date().toISOString(), sourceId, context: text, fingerprint});
       if (created?.id) void opsWakeCloud(created.id);
       setRequested(text); setPolls(0); history.refetch?.();
     } catch { asked.current = ''; }
   };
   // Never retry a failed request automatically: each new request can use the daily allowance.
-  useEffect(() => { if (auto && aiReady && text && history.status === 'success' && !history.isFetching && !answer && !failed) void request(); }, [auto, aiReady, text, history.status, history.isFetching, !!answer, failed]);
-  useEffect(() => { if (!requested || answer || polls >= 12) return; const t = setTimeout(() => { history.refetch?.(); setPolls(p => p + 1); }, 2500); return () => clearTimeout(t); }, [requested, answer, polls]);
-  const status = answer ? 'answered' : requested || pending ? (polls >= 12 ? 'slow' : 'waiting') : failed ? 'failed' : aiReady ? 'idle' : 'off';
+  useEffect(() => { if (auto && aiReady && text && history.status === 'success' && !history.isFetching && !answer && !failed && requested !== text) void request(false); }, [auto, aiReady, text, history.status, history.isFetching, !!answer, failed, requested]);
+  useEffect(() => { if (!requested || answer || failed || polls >= 12) return; const t = setTimeout(() => { history.refetch?.(); setPolls(p => p + 1); }, 2500); return () => clearTimeout(t); }, [requested, answer, failed, polls]);
+  const status = answer ? 'answered' : failed ? 'failed' : requested || pending ? (polls >= 12 ? 'slow' : 'waiting') : aiReady ? 'idle' : 'off';
   return {answer, status, request, requestId: done?.id ?? pending?.id ?? '', aiReady};
 }
 
@@ -2476,27 +2485,33 @@ function v2Owned(items: any[], email?: string | null) { const e = (email ?? '').
 // Turns a saved Datasets row (or the demo marker) into the profiling state used across the workspace.
 function datasetState(record: any) {
   const f = record.fields, asOf = v2Label(f.asOf) || DEMO_STORE_AS_OF;
-  const raw = v2Label(f.csv).trim();
-  const csv = raw === DEMO_STORE_MARKER ? makeDemoStoreCsv(asOf) : raw;
+  const raw = v2Label(f.csv);
+  const generated = [DEMO_STORE_MARKER, HISTORICAL_DEMO_STORE_MARKER].includes(raw.trim());
+  const csv = generated ? makeDemoStoreCsv(asOf) : raw;
+  const source = generated || f.source === DATASET_SOURCE.demo ? DATASET_SOURCE.demo : DATASET_SOURCE.upload;
   const windowDays = [30, 60, 90].includes(Number(f.windowDays)) ? Number(f.windowDays) : 30;
   const parsed = parseProfileCsv(csv);
   if (parsed.errors.length) throw Error(parsed.errors[0]);
-  return {csv, asOf, windowDays: String(windowDays), origin: v2Label(f.name) || 'Saved data', analysis: analyzeProfiles(parsed.rows, {asOf, windowDays}), datasetId: record.id};
+  return {csv, asOf, windowDays: String(windowDays), source, origin: v2Label(f.name) || 'Saved data', analysis: analyzeProfiles(parsed.rows, {asOf, windowDays}), datasetId: record.id};
 }
+const emptyProfileState = {csv:'', asOf:DEMO_STORE_AS_OF, windowDays:'30', source:DATASET_SOURCE.upload, origin:'No data yet', analysis:null, datasetId:null};
 function demoState() {
   const csv = makeDemoStoreCsv(DEMO_STORE_AS_OF);
-  return {csv, asOf: DEMO_STORE_AS_OF, windowDays: '30', origin: DEMO_STORE_NAME, analysis: analyzeProfiles(parseProfileCsv(csv).rows, {asOf: DEMO_STORE_AS_OF, windowDays: 30}), datasetId: null};
+  return {csv, asOf: DEMO_STORE_AS_OF, windowDays: '30', source: DATASET_SOURCE.demo, origin: DEMO_STORE_NAME, analysis: analyzeProfiles(parseProfileCsv(csv).rows, {asOf: DEMO_STORE_AS_OF, windowDays: 30}), datasetId: null};
 }
 
 function DatasetPanel({state, datasets, onDemo, onSave, onPick, busy, canSave}: any) {
   const rows = state.analysis?.coverage?.inputRows;
-  const unsaved = !!state.analysis && !state.datasetId && !isDemoCsv(state.csv, state.asOf);
+  const unsaved = !!state.analysis && !state.datasetId;
+  const summary = state.analysis
+    ? rows.toLocaleString('en-US') + ' transactions · analysis date ' + state.asOf + (state.datasetId ? ' · saved ' + savedLocation : ' · not saved yet')
+    : state.csv && !state.datasetId ? 'Not saved yet. Analyze transactions to save.' : 'Open the simulated demo store, or paste or upload a synthetic CSV below.';
   return <section className="v2-data" aria-label="Your data">
-    <div><p className="eyebrow">Your data</p><h2>{state.analysis ? state.origin : 'No data loaded yet'}</h2><p className="small muted">{state.analysis ? rows.toLocaleString('en-US') + ' transactions · analysis date ' + state.asOf + (state.datasetId ? ' · saved in this browser' : ' · not saved yet') : 'Open the simulated demo store, or paste or upload a synthetic CSV below.'}</p></div>
+    <div><p className="eyebrow">Your data</p><h2>{state.csv ? state.origin : 'No data loaded yet'}</h2><p className="small muted">{summary}</p></div>
     <div className="row v2-data-actions">
       {datasets.length > 1 && <label className="v2-select">Saved data<select className="input" value={state.datasetId ?? ''} onChange={e => onPick(e.target.value)}><option value="" disabled>Choose…</option>{datasets.map((d: any) => <option key={d.id} value={d.id}>{v2Label(d.fields.name)}</option>)}</select></label>}
       <button type="button" className="btn" disabled={busy} onClick={onDemo}><Store size={14}/>Open demo store</button>
-      {unsaved && <button type="button" className="btn primary" disabled={busy || !canSave} onClick={onSave}>{busy ? 'Saving…' : 'Save in this browser'}</button>}
+      {unsaved && <button type="button" className="btn primary" disabled={busy || !canSave} onClick={onSave}>{busy ? 'Saving…' : saveDataLabel}</button>}
     </div>
     {unsaved && state.csv.length > DATASET_MAX_CHARS && <p className="small muted">This file is larger than {DATASET_MAX_CHARS.toLocaleString('en-US')} characters, so it is analysed in this session only.</p>}
   </section>;
@@ -2619,19 +2634,16 @@ function TestMode({state, onStart, onSkip, onReset, go}: any) {
 
 export default function Block(){
   const brand=useTextSetting({name:'retail-brand',label:'Brand name',initialValue:'CP Retail'});
-  const loginLink=useNavigationSetting({name:'real-login',label:'Softr login page',initialValue:{destination:'/login',openIn:'SELF'}});
-  const savedLink=useNavigationSetting({name:'existing-scenarios',label:'Existing database scenario workflow',initialValue:{destination:'/',openIn:'SELF'}});
+  const loginLink=useNavigationSetting({name:'real-login',label:'Workspace sign-in page',initialValue:{destination:'/login',openIn:'SELF'}});
   const user=useCurrentUser();
   const [listVisit,setListVisit]=useState(0);
-  const linkedRecordId=useCurrentRecordId();
-  const [view,setView]=useState(linkedRecordId ? 'my-scenarios' : 'start');
+  const [{view,recordId},setLocation]=useState(()=>workspaceLocation(window.location));
   const [opsSourceId,setOpsSourceId]=useState('');
   const [opsProfile,setOpsProfile]=useState<any>(null);
-  const [profileState,setProfileState]=useState<any>(()=>({csv:'',asOf:DEMO_STORE_AS_OF,windowDays:'30',origin:'No data yet',analysis:null,datasetId:null}));
-  const [scenarioToOpen,setScenarioToOpen]=useState<string|null>(null);
+  const [profileState,setProfileState]=useState<any>(emptyProfileState);
   const workspaceRootRef=useRef<HTMLDivElement|null>(null);
   const workspaceMainRef=useRef<HTMLElement|null>(null);
-  useEffect(()=>{workspaceRootRef.current?.scrollIntoView({block:'start',behavior:'auto'});workspaceMainRef.current?.focus({preventScroll:true});},[view,listVisit]);
+  useEffect(()=>{workspaceRootRef.current?.scrollIntoView({block:'start',behavior:'auto'});workspaceMainRef.current?.focus({preventScroll:true});},[view,recordId,listVisit]);
   const [role,setRole]=useState('Store Manager');
   const [menu,setMenu]=useState(false);
   const [selected,setSelected]=useState(5);
@@ -2640,11 +2652,28 @@ export default function Block(){
   const [decisionId,setDecisionId]=useState('SAMPLE-001');
   const [decisionQuery,setDecisionQuery]=useState('');
   const [message,setMessage]=useState('');
-  const [help,setHelp]=useState(false);
-  const go=(next:string)=>{if(new URLSearchParams(window.location.search).has('recordId'))window.history.replaceState(null,'',window.location.pathname);if(next==='my-scenarios'){setScenarioToOpen(null);setListVisit(n=>n+1);}setView(next);setMenu(false);setMessage('');};
+  useEffect(()=>{
+    const restoreLocation=()=>{
+      setLocation(workspaceLocation(window.location));
+      setMenu(false);
+      setMessage('');
+    };
+    window.addEventListener('popstate',restoreLocation);
+    return ()=>window.removeEventListener('popstate',restoreLocation);
+  },[]);
+  const go=(next:string,nextRecordId:string|null=null)=>{
+    const current=workspaceLocation(window.location);
+    if(current.view!==next||current.recordId!==nextRecordId){
+      window.history.pushState(null,'',workspaceHref(next,nextRecordId));
+      setLocation(workspaceLocation(window.location));
+    }
+    if(next==='my-scenarios'&&!nextRecordId)setListVisit(n=>n+1);
+    setMenu(false);
+    setMessage('');
+  };
   const requestRecommendations=(id:string)=>{setOpsProfile(null);setOpsSourceId(id);go('recommendations');};
   const planForProfile=(id:string,snapshot:any)=>{setOpsProfile(snapshot);setOpsSourceId(id);go('recommendations');};
-  const viewSavedScenario=(id:string)=>{setScenarioToOpen(id);setListVisit(n=>n+1);setView('my-scenarios');setMenu(false);setMessage('');};
+  const viewSavedScenario=(id:string)=>go('my-scenarios',id);
   const launch=(r:string)=>{setRole(r);go('upload');};
 // v2: saved datasets, demo store, pending count and test mode live at the Block level so every view shares them.
   const datasetsQ=useRecords({from:ds.datasets,select:datasetSelect,where:q.text('owner').is(user?.email??''),count:50,enabled:!!user?.email});
@@ -2658,7 +2687,13 @@ export default function Block(){
   const [offerChecked,setOfferChecked]=useState(false);
   useEffect(()=>{const h=(e:any)=>{if(e.detail?.type==='offer-checked')setOfferChecked(true);};window.addEventListener('cp-test-event',h);return ()=>window.removeEventListener('cp-test-event',h);},[]);
   useEffect(()=>{if(!testing)return;const h=(e:any)=>setTestState((s:any)=>s&&testApply(s,e.detail?.type,Date.now(),e.detail));window.addEventListener('cp-test-event',h);return ()=>window.removeEventListener('cp-test-event',h);},[testing]);
-  useEffect(()=>{if(profileState.analysis||profileState.datasetId||!datasets.length)return;try{setProfileState(datasetState(datasets[0]));}catch{}},[datasets.length]);
+  useEffect(()=>{
+    if (profileState !== emptyProfileState || !datasets.length) return;
+    try {
+      const saved = datasetState(datasets[0]);
+      setProfileState((current:any) => current === emptyProfileState ? saved : current);
+    } catch {}
+  },[datasets.length]);
   const pickDataset=(id:string)=>{const r=datasets.find((d:any)=>d.id===id);if(!r)return;try{setProfileState(datasetState(r));setOpsProfile(null);}catch(e:any){setMessage(e?.message||'That saved data could not be read.');}};
   const openDemo=async()=>{
     const existing=datasets.find((d:any)=>v2Label(d.fields.csv).trim()===DEMO_STORE_MARKER);
@@ -2666,16 +2701,29 @@ export default function Block(){
     const st=demoState();setProfileState(st);setOpsProfile(null);
     if(!createDataset.enabled||!user?.email)return;
     setDataBusy(true);
-    try{const rec:any=await createDataset.mutateAsync({name:DEMO_STORE_NAME,owner:user.email,source:DATASET_SOURCE.demo,csv:DEMO_STORE_MARKER,rows:st.analysis.coverage.inputRows,asOf:st.asOf,windowDays:30});if(rec?.id)setProfileState((s:any)=>s.csv===st.csv?{...s,datasetId:rec.id}:s);datasetsQ.refetch?.();}
-    catch{setMessage('The demo store is open, but it could not be saved in this browser. It stays open until you reload.');}
+    try {
+      const record = await createDataset.mutateAsync({name:DEMO_STORE_NAME,owner:user.email,source:DATASET_SOURCE.demo,csv:DEMO_STORE_MARKER,rows:st.analysis.coverage.inputRows,asOf:st.asOf,windowDays:Number(st.windowDays)});
+      const saved = datasetState(record);
+      setProfileState((current:any) => current === st ? saved : current);
+      datasetsQ.refetch?.();
+    }
+    catch{setMessage('The demo store is open, but it could not be saved ' + savedLocation + '. It stays open until you reload.');}
     finally{setDataBusy(false);}
   };
   const saveDataset=async()=>{
     const st=profileState;
-    if(isDemoCsv(st.csv,st.asOf)){await openDemo();return;}
     if(!st.analysis||st.datasetId||st.csv.length>DATASET_MAX_CHARS||!createDataset.enabled||!user?.email)return;
     setDataBusy(true);
-    try{const rec:any=await createDataset.mutateAsync({name:'Upload '+new Date().toISOString().slice(0,10)+' ('+st.analysis.coverage.inputRows+' rows)',owner:user.email,source:DATASET_SOURCE.upload,csv:st.csv,rows:st.analysis.coverage.inputRows,asOf:st.asOf,windowDays:Number(st.windowDays)});if(rec?.id)setProfileState((s:any)=>s.csv===st.csv?{...s,datasetId:rec.id}:s);datasetsQ.refetch?.();}
+    try {
+      const demo = st.source === DATASET_SOURCE.demo || isDemoCsv(st.csv, st.asOf);
+      const source = demo ? DATASET_SOURCE.demo : DATASET_SOURCE.upload;
+      const rows = st.analysis.coverage.inputRows;
+      const name = `${demo ? DEMO_STORE_NAME : 'Upload'} · ${st.asOf} · ${st.windowDays} days (${rows} rows)`;
+      const record = await createDataset.mutateAsync({name,owner:user.email,source,csv:st.csv,rows,asOf:st.asOf,windowDays:Number(st.windowDays)});
+      // A save can finish after the user edits, re-analyzes, or opens another dataset.
+      setProfileState((current:any) => current === st ? {...current, origin:name, source, datasetId:record.id} : current);
+      datasetsQ.refetch?.();
+    }
     catch(e:any){setMessage('Your data could not be saved ('+(e?.message||'try a smaller file')+'). The analysis stays open in this session.');}
     finally{setDataBusy(false);}
   };
@@ -2701,7 +2749,14 @@ export default function Block(){
     <div className="grid-2"><section className="stack"><h2>Demo Store A — weekly sales</h2><p className="small muted">Four weeks plus two days; all figures are simulated.</p><div className="table-wrap"><table><thead><tr><th>Period</th><th>Store</th><th>Sales</th><th>Margin</th><th>Health</th></tr></thead><tbody>{[['Days 1–7',36400],['Days 8–14',37800],['Days 15–21',39200],['Days 22–28',37800],['Days 29–30',10830]].map(([p,s])=><tr key={p}><td>{p}</td><td>Demo A</td><td>{money(Number(s))}</td><td>37.6%</td><td><Pill>Sample</Pill></td></tr>)}</tbody></table></div></section><section className="stack"><h2>Anomaly & Action Feed</h2><p className="small muted">Sample alerts for the store manager to review.</p><div className="notice warn"><AlertTriangle size={20}/><div><h3>Low stock: packaged snacks</h3><p className="small muted" style={{margin:'7px 0 12px'}}>Review snack stock before the afternoon rush. Alert values are illustrative.</p><Next to="scenarios" secondary>Review stock assumptions</Next></div></div><div className="panel"><h3>RFM Customer Matrix</h3><p className="small muted" style={{margin:'7px 0 12px'}}>Explore three rule-based shopper groups.</p><Next to="profiles" secondary>View RFM</Next></div></section></div>
   </>;
 
-  const updateProfileState=(next:any)=>{setProfileState((old:any)=>{const n=typeof next==='function'?next(old):next;return n.csv!==old.csv?{...n,datasetId:null}:n;});setOpsProfile(null);};
+  const updateProfileState=(next:any)=>{
+    setProfileState((old:any)=>{
+      const state = typeof next === 'function' ? next(old) : next;
+      const inputsChanged = state.csv !== old.csv || state.asOf !== old.asOf || state.windowDays !== old.windowDays;
+      return inputsChanged ? {...state, datasetId:null} : state;
+    });
+    setOpsProfile(null);
+  };
   const profiles=<CustomerProfiling dataPanel={<DatasetPanel state={profileState} datasets={datasets} onDemo={openDemo} onSave={saveDataset} onPick={pickDataset} busy={dataBusy} canSave={createDataset.enabled&&profileState.csv.length<=DATASET_MAX_CHARS}/>} onSample={openDemo} intent={advisorIntent} state={profileState} setState={updateProfileState} onPlan={planForProfile} onCreate={()=>go('my-scenarios')} onProfiles={()=>go('profiles')}/>;
   const upload=<CustomerProfiling dataPanel={<DatasetPanel state={profileState} datasets={datasets} onDemo={openDemo} onSave={saveDataset} onPick={pickDataset} busy={dataBusy} canSave={createDataset.enabled&&profileState.csv.length<=DATASET_MAX_CHARS}/>} onSample={openDemo} intent={advisorIntent} state={profileState} setState={updateProfileState} onPlan={planForProfile} onCreate={()=>go('my-scenarios')} onProfiles={()=>go('profiles')} mode="upload"/>;
 
@@ -2729,6 +2784,6 @@ export default function Block(){
   return <div className="cp-retail" data-view={view} ref={workspaceRootRef}><style>{css}</style>{view!=='login'&&<a className="skip-link" href="#cp-workspace-main">Skip to content</a>}{view==='login'?<AuthEntry brand={brand} user={user} loginLink={loginLink} onContinue={()=>go('my-scenarios')} onExplore={()=>launch('Store Manager')}/>:<div className="app"><aside className={'sidebar '+(menu?'open':'')}><div className="brand"><BrandMark size={34}/><div><strong>{brand} <span className="brand-mode" style={{fontSize:10}}>WORKSPACE</span></strong><p className="brand-subtitle">Decision workspace</p></div></div><nav className="side-nav" aria-label="Store workspace">
       <p className="eyebrow">Workspace</p>
       {navItems.map(([key,label,Icon])=><button key={key} className={'nav-button '+(view===key?'active':'')} aria-current={view===key?'page':undefined} onClick={()=>key==='offer'?openOffer():go(key)}><Icon size={16}/><span>{label}</span></button>)}
-      <div className="workspace-note"><span className="workspace-note-dot" aria-hidden="true"/><div><strong>Independent preview</strong><p>Simulated data · Saved in this browser</p></div></div>
-    </nav><div className="side-bottom"><AccountSummary user={user}/><AccountNavigation user={user} loginLink={loginLink} className="btn account-settings">{user?.email?'Account settings':'Sign in'}</AccountNavigation><button type="button" className="btn welcome-help" onClick={()=>go('login')}><HelpCircle size={15}/>Welcome &amp; help</button></div></aside><div className="workspace"><header className="topbar"><div className="row"><button className="btn mobile-menu" aria-label="Toggle workspace navigation" aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X size={17}/>:<Menu size={17}/>}</button><span className="breadcrumb muted">Decision Workspace <ChevronRight size={13} style={{display:'inline',verticalAlign:'middle'}}/> <strong style={{color:'#092b50'}}>{navItems.find(n=>n[0]===view)?.[1]}</strong></span></div><div className="row top-meta">{['my-scenarios','my-decisions','recommendations'].includes(view)?<><Pill tone="green">Browser storage</Pill><span className="row"><ShieldCheck size={14}/>{view==='my-decisions'?'Your saved decisions':view==='recommendations'?'Scenario planning':'Your saved scenarios'}</span></>:['profiles','upload'].includes(view)?<><Pill tone="green">{profileState.origin}</Pill><span className="row"><CalendarDays size={14}/>{profileState.windowDays}-day window</span></>:<><Pill tone="green">{profileState.analysis?profileState.origin:'No data yet'}</Pill>{profileState.analysis&&<span className="row"><CalendarDays size={14}/>{profileState.windowDays}-day window</span>}</>}</div><AccountNavigation user={user} loginLink={loginLink} className="btn topbar-account"/></header><TestBar state={view==='test'?null:testState} onSkip={()=>setTestState((s:any)=>s&&testSkip(s,Date.now()))} go={go}/><main className="content" id="cp-workspace-main" ref={workspaceMainRef} tabIndex={-1}>{message&&<div className="notice" role="status"><Info size={18}/><p className="small" style={{flex:1}}>{message}</p><button className="btn" aria-label="Dismiss message" onClick={()=>setMessage('')}><X size={12}/></button></div>}{help&&<div className="notice" role="status"><Info size={20}/><div><strong>Sample data & feature status</strong><p className="small">The dashboard and customer profiles are calculated from your saved or uploaded transactions; the demo store is simulated. Saved data stays in your account, and only aggregate group figures are sent to AI. Operational recommendations use rules and your entered assumptions. Sign-in, saved scenarios and My Decisions connect to the existing Softr database.</p></div></div>}{view==='my-scenarios'?<ConnectedScenarios key={listVisit} initialRecordId={scenarioToOpen} ignoreRecordId={listVisit>0} loginLink={loginLink} originalPage={savedLink} openDemo={()=>launch('Store Manager')} backToList={()=>go('my-scenarios')} onRecommend={requestRecommendations}/>:view==='my-decisions'?<ConnectedDecisions loginLink={loginLink} openDemo={()=>launch('Store Manager')} openScenarios={()=>go('my-scenarios')}/>:view==='recommendations'?<OperationalRecommendations initialSourceId={opsSourceId} initialProfile={opsProfile} onProfiles={()=>go('profiles')} loginLink={loginLink} openDemo={()=>launch('Store Manager')} openScenarios={()=>go('my-scenarios')} openDecisions={()=>go('my-decisions')} openSavedScenario={viewSavedScenario}/>:view==='start'?<StartHome user={user} datasets={datasets} profileState={profileState} go={go} onDemo={openDemo} busy={dataBusy} offerChecked={offerChecked} onAct={actOnAdvice}/>:view==='test'?<TestMode state={testState} onStart={()=>setTestState(testStart(Date.now()))} onSkip={()=>setTestState((s:any)=>s&&testSkip(s,Date.now()))} onReset={()=>setTestState(null)} go={go}/>:view==='dashboard'?<LiveDashboard state={profileState} go={go} pendingCount={pendingCount} onAct={actOnAdvice}/>:view==='upload'?upload:view==='profiles'?profiles:view==='scenarios'?scenarios:savedView}<footer className="footer row between"><span>Coursework workspace · Explicit assumptions · Manager review required</span>{workflowLink}</footer></main></div></div>}</div>;
+      <div className="workspace-note"><span className="workspace-note-dot" aria-hidden="true"/><div><strong>{cloudEnabled ? 'CP Retail workspace' : 'Independent preview'}</strong><p>{cloudEnabled ? 'Private workspace records' : 'Simulated data · Saved in this browser'}</p></div></div>
+    </nav><div className="side-bottom"><AccountSummary user={user}/><AccountNavigation user={user} loginLink={loginLink} className="btn account-settings">{user?.email?'Account settings':'Sign in'}</AccountNavigation><a href="/welcome" className="btn welcome-help"><HelpCircle size={15}/>Welcome &amp; help</a></div></aside><div className="workspace"><header className="topbar"><div className="row"><button className="btn mobile-menu" aria-label="Toggle workspace navigation" aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X size={17}/>:<Menu size={17}/>}</button><span className="breadcrumb muted">Decision Workspace <ChevronRight size={13} style={{display:'inline',verticalAlign:'middle'}}/> <strong style={{color:'#092b50'}}>{navItems.find(n=>n[0]===view)?.[1]}</strong></span></div><div className="row top-meta">{['my-scenarios','my-decisions','recommendations'].includes(view)?<><Pill tone="green">{storageLabel}</Pill><span className="row"><ShieldCheck size={14}/>{view==='my-decisions'?'Your saved decisions':view==='recommendations'?'Scenario planning':'Your saved scenarios'}</span></>:['profiles','upload'].includes(view)?<><Pill tone="green">{profileState.origin}</Pill><span className="row"><CalendarDays size={14}/>{profileState.windowDays}-day window</span></>:<><Pill tone="green">{profileState.analysis?profileState.origin:'No data yet'}</Pill>{profileState.analysis&&<span className="row"><CalendarDays size={14}/>{profileState.windowDays}-day window</span>}</>}</div><AccountNavigation user={user} loginLink={loginLink} className="btn topbar-account"/></header><TestBar state={view==='test'?null:testState} onSkip={()=>setTestState((s:any)=>s&&testSkip(s,Date.now()))} go={go}/><main className="content" id="cp-workspace-main" ref={workspaceMainRef} tabIndex={-1}>{message&&<div className="notice" role="status"><Info size={18}/><p className="small" style={{flex:1}}>{message}</p><button className="btn" aria-label="Dismiss message" onClick={()=>setMessage('')}><X size={12}/></button></div>}{view==='my-scenarios'?<ConnectedScenarios key={`${listVisit}:${recordId ?? ''}`} recordId={recordId} onOpenScenario={viewSavedScenario} loginLink={loginLink} openDemo={()=>launch('Store Manager')} backToList={()=>go('my-scenarios')} onRecommend={requestRecommendations}/>:view==='my-decisions'?<ConnectedDecisions loginLink={loginLink} openDemo={()=>launch('Store Manager')} openScenarios={()=>go('my-scenarios')}/>:view==='recommendations'?<OperationalRecommendations initialSourceId={opsSourceId} initialProfile={opsProfile} onProfiles={()=>go('profiles')} loginLink={loginLink} openDemo={()=>launch('Store Manager')} openScenarios={()=>go('my-scenarios')} openDecisions={()=>go('my-decisions')} openSavedScenario={viewSavedScenario}/>:view==='start'?<StartHome user={user} datasets={datasets} profileState={profileState} go={go} onDemo={openDemo} busy={dataBusy} offerChecked={offerChecked} onAct={actOnAdvice}/>:view==='test'?<TestMode state={testState} onStart={()=>setTestState(testStart(Date.now()))} onSkip={()=>setTestState((s:any)=>s&&testSkip(s,Date.now()))} onReset={()=>setTestState(null)} go={go}/>:view==='dashboard'?<LiveDashboard state={profileState} go={go} pendingCount={pendingCount} onAct={actOnAdvice}/>:view==='upload'?upload:view==='profiles'?profiles:view==='scenarios'?scenarios:savedView}<footer className="footer row between"><span>Coursework workspace · Explicit assumptions · Manager review required</span>{workflowLink}</footer></main></div></div>}</div>;
 }

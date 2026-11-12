@@ -1,10 +1,16 @@
+@import url('/fonts/inter/inter.css');
+
 :root {
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cp-font: 'Inter', system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--cp-font);
   color: #223b36;
   background: #f6f7f3;
 }
 
 body { margin: 0; }
+
+/* Softr supplied this inherited theme font outside the exported block. */
+#root .cp-retail, #root .cp-landing { font-family: var(--cp-font); }
 
 .preview-entry {
   min-height: 100vh;
@@ -33,3 +39,45 @@ body { margin: 0; }
 .preview-actions { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-top: 24px; }
 .preview-actions .preview-primary { border-radius: 999px; padding: 12px 17px; background: #b0f1d7; color: #112b24; text-decoration: none; font-weight: 650; }
 .preview-entry-card a:focus-visible { outline: 2px solid #a9edd5; outline-offset: 4px; }
+
+.account-form { display: grid; gap: 16px; margin-block: 24px; }
+.account-form label { display: grid; gap: 6px; font-size: .95rem; }
+.account-form input {
+  padding: 11px 12px;
+  border: 1px solid #52766a;
+  border-radius: 8px;
+  background: #07110f;
+  color: inherit;
+  font: inherit;
+}
+.account-form button, .preview-actions button {
+  width: fit-content;
+  padding: 12px 17px;
+  border: 1px solid #8dd3b9;
+  border-radius: 999px;
+  background: #b0f1d7;
+  color: #112b24;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.account-form button:disabled, .preview-actions button:disabled { cursor: wait; opacity: .7; }
+.account-form input:focus-visible, .account-form button:focus-visible, .preview-actions button:focus-visible {
+  outline: 2px solid #a9edd5;
+  outline-offset: 4px;
+}
+.account-error { color: #ffbdb8; }
+.content-studio{max-width:1080px;margin:0 auto;padding:32px 24px;color:#223b36}
+.content-studio-header,.content-preview-bar,.content-studio-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.content-studio-header h1,.content-studio-panel h2{margin:4px 0 12px}
+.content-studio-grid{display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,2fr);gap:20px}
+.content-studio-panel{padding:20px;background:#fff;border:1px solid #d7e4de;border-radius:16px}
+.content-studio-panel ul,.content-studio-panel ol{padding-left:20px;display:grid;gap:8px}
+.content-studio-panel fieldset{border:0;padding:0;margin:0;display:grid;gap:12px;min-width:0}
+.content-studio-panel label{display:grid;gap:5px;font-weight:600}
+.content-studio-panel input,.content-studio-panel textarea{width:100%;border:1px solid #b9cbc2;border-radius:8px;padding:9px;font:inherit;color:inherit}
+.content-studio-panel button,.content-preview-bar button{border:1px solid #21675d;background:#f1f8f5;color:#174c43;border-radius:8px;padding:8px 11px;cursor:pointer;font:inherit}
+.content-studio-panel button:disabled{opacity:.55;cursor:default}
+.content-studio-actions{justify-content:flex-start;margin-top:14px}
+.content-preview-bar{position:sticky;top:0;z-index:20;padding:12px 24px;background:#ecf5f0;color:#174c43}
+@media(max-width:720px){.content-studio-grid{grid-template-columns:1fr}}

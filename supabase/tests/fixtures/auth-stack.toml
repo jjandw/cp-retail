@@ -1,0 +1,32 @@
+project_id = "cp-retail-auth-qa"
+
+[api]
+port = 54321
+
+[db]
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[auth]
+site_url = "http://127.0.0.1:4173"
+additional_redirect_urls = ["http://127.0.0.1:4173/workspace", "http://127.0.0.1:4173/reset-password"]
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1s"
+
+[local_smtp]
+enabled = true
+port = 54324
+
+[edge_runtime]
+policy = "per_worker"
+
+[edge_runtime.secrets]
+DEEPSEEK_KEY = "local-advisor-fixture"
+ADVISOR_ALLOWED_ORIGINS = "http://127.0.0.1:4173"
+
+[functions.advisor]
+verify_jwt = false

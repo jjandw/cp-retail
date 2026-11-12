@@ -1,0 +1,99 @@
+name: Verify standalone site
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'codex/supabase-migration']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: local-ci
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 8
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Verify the demo and hosted builds
+        run: |
+          npm run build
+          if npm run build:cloud > "$RUNNER_TEMP/missing-cloud-config.log" 2>&1; then
+            echo 'Cloud build accepted missing Supabase configuration.'
+            exit 1
+          fi
+          grep -F 'A cloud build requires the Supabase URL and publishable key.' "$RUNNER_TEMP/missing-cloud-config.log"
+          export VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_fixture
+          if VITE_SUPABASE_URL=invalid-url npm run build:cloud > "$RUNNER_TEMP/invalid-cloud-config.log" 2>&1; then
+            echo 'Cloud build accepted an invalid Supabase URL.'
+            exit 1
+          fi
+          grep -F 'A cloud build requires an HTTPS Supabase URL' "$RUNNER_TEMP/invalid-cloud-config.log"
+          export VITE_SUPABASE_URL=https://cp-retail-ci.supabase.co
+          npm run build:cloud
+          for route in welcome workspace pixso-preview my-decisions old-home item-details login sign-up forgot-password reset-password account content; do
+            cmp dist/index.html "dist/$route/index.html"
+          done
+      - name: Verify Cloudflare Pages builds
+        env:
+          CF_PAGES_BRANCH: codex/ci-pages-preview
+          CF_PAGES_COMMIT_SHA: ${{ github.sha }}
+          CP_RETAIL_PRODUCTION_SUPABASE_URL: https://cp-retail-ci.supabase.co
+          VITE_SUPABASE_URL: https://cp-retail-ci.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_fixture
+        run: |
+          if npm run build:pages > "$RUNNER_TEMP/invalid-pages-preview.log" 2>&1; then
+            echo 'A branch preview accepted the production backend.'
+            exit 1
+          fi
+          grep -F 'A branch preview must use a separate Supabase project.' "$RUNNER_TEMP/invalid-pages-preview.log"
+          printf '%s\n' 'VITE_SUPABASE_URL=https://cp-retail-dotenv-ci.supabase.co' 'VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_dotenv_fixture' > .env.local
+          VITE_SUPABASE_URL= VITE_SUPABASE_PUBLISHABLE_KEY= npm run build:pages
+          node --input-type=module -e "import assert from 'node:assert/strict'; import {readFileSync} from 'node:fs'; assert.deepEqual(JSON.parse(readFileSync('dist/release.json')), {branch:process.env.CF_PAGES_BRANCH,commit:process.env.CF_PAGES_COMMIT_SHA,environment:'preview',cloud:false})"
+          if grep -rlF 'https://cp-retail-dotenv-ci.supabase.co' dist/assets; then
+            echo 'Demo preview included an ignored .env.local configuration.'
+            exit 1
+          fi
+          VITE_SUPABASE_URL=https://cp-retail-staging-ci.supabase.co npm run build:pages
+          cmp dist/index.html dist/content/index.html
+          CF_PAGES_BRANCH=main npm run build:pages
+          node --input-type=module -e "import assert from 'node:assert/strict'; import {readFileSync} from 'node:fs'; assert.deepEqual(JSON.parse(readFileSync('dist/release.json')), {branch:'main',commit:process.env.CF_PAGES_COMMIT_SHA,environment:'production',cloud:true})"
+          VITE_SUPABASE_URL= VITE_SUPABASE_PUBLISHABLE_KEY= npm run build:pages
+          if grep -rlE 'https://cp-retail-(ci|staging-ci|dotenv-ci)\.supabase\.co' dist/assets; then
+            echo 'Rebuilt demo preview retained a cloud release asset.'
+            exit 1
+          fi
+      - run: node --test supabase/tests/advisor.test.mjs scripts/workspace-routes.test.mjs
+      - name: Verify database policies and historical import
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          PGUSER: postgres
+          PGDATABASE: postgres
+          PGPASSWORD: local-ci
+          CP_RETAIL_LOCAL_HISTORY_QA: '1'
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/auth.sql
+          psql -X -v ON_ERROR_STOP=1 -f supabase/tests/fixtures/storage.sql
+          for sql in supabase/migrations/*.sql supabase/tests/*_policies.sql; do
+            psql -X -v ON_ERROR_STOP=1 -f "$sql"
+          done
+          node --test scripts/softr-history.test.mjs
