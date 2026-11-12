@@ -270,6 +270,14 @@ const css = `
 .cp-retail .sidebar{background:#0c1715;color:#a7b8b3}
 .cp-retail .sidebar .brand strong,.cp-retail .sidebar .brand{color:#eef5f2}
 .cp-retail .sidebar .eyebrow,.cp-retail .brand-subtitle{color:#7f938e}
+.cp-retail .sidebar .side-bottom{border-top-color:#263d36}
+.cp-retail .sidebar .account-identity strong{color:#eef5f2}
+.cp-retail .sidebar .account-identity p{color:#a7b8b3}
+.cp-retail .sidebar .side-bottom .btn{background:transparent;color:#c6d5cf;border-color:transparent;box-shadow:none}
+.cp-retail .sidebar .side-bottom .btn:hover{background:rgba(255,255,255,.06);color:#eef5f2}
+.cp-retail .sidebar .side-bottom .btn:focus-visible{outline-color:#5fd3ae}
+.cp-retail .sidebar .side-bottom .account-settings{text-decoration:none}
+.cp-retail .sidebar .side-bottom .welcome-help{border-top-color:#263d36}
 .cp-retail .nav-button{color:#a7b8b3;border-radius:10px;font-size:13px;transition:background .2s ease,color .2s ease,transform .1s ease-out}
 .cp-retail .nav-button:hover{background:rgba(255,255,255,.06);color:#eef5f2}
 .cp-retail .nav-button.active{background:rgba(95,211,174,.16);color:#eef5f2;font-weight:650;box-shadow:inset 2px 0 0 #5fd3ae}
