@@ -22,7 +22,7 @@ test('account preferences preserve drafts, persist language/currency and keep th
  await page.goto('http://127.0.0.1:4177/workspace?view=recommendations');
  await page.getByRole('heading',{name:'Compare actions',exact:true}).waitFor();
  assert.equal(await page.locator('.cp-language-bar').count(),0);
- assert.equal(await page.locator('.brand img').getAttribute('src'),'/cp-retail-logo.png');
+ assert.equal(await page.locator('.brand img').getAttribute('src'),'/cp-retail-sidebar-mark.png');
  await page.getByLabel(/^Starting scenario/).selectOption('demo-snack-drink-baseline');
  await page.getByLabel('Maximum discount (%)',{exact:true}).fill('12');
  await page.getByRole('button',{name:'Account',exact:true}).click();
