@@ -1114,5 +1114,13 @@ export const zh = {
   "Share of customers": "顾客人数与占比",
   "After operating cost": "扣除运营成本后",
   "Break-even threshold": "回本线",
-  "Detailed offer figures": "查看详细测算数字"
+  "Detailed offer figures": "查看详细测算数字",
+  "Return offer": "回访优惠",
+  "Offer break-even trend": "优惠回本趋势",
+  "Extra gross profit at your assumption": "当前假设下的新增毛利",
+  "Break-even": "回本",
+  "Above break-even by": "高于回本门槛",
+  "Below break-even by": "距离回本还差",
+  "percentage points": "个百分点",
+  "At break-even": "恰好达到回本门槛"
 };
