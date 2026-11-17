@@ -1,4 +1,4 @@
-import { BrandLogo } from '@/components/brand-logo';
+import { BrandLogo, BrandIcon } from '@/components/brand-logo';
 import { LanguageContext, translate } from '@/i18n/language';
 import { opsModel, opsRound } from '@/lib/scenario-math.mjs';
 import React, { useState, useRef, useEffect } from '@/i18n/react';
@@ -1446,7 +1446,7 @@ function AuthEntry({brand,user,loginLink,onContinue,onExplore}: {
   const signedIn = !!user?.email;
   return <section className="auth-entry" aria-labelledby="auth-entry-title">
     <header className="auth-entry-header">
-      <div className="auth-entry-brand"><BrandMark size={40}/><div><strong>{brand}</strong><p>Decision assistant</p></div></div>
+      <div className="auth-entry-brand"><BrandIcon size={40}/><div><strong>{brand}</strong><p>Decision assistant</p></div></div>
       <span className="auth-entry-prototype">Coursework prototype</span>
     </header>
     <main className="auth-entry-main">
@@ -1934,9 +1934,7 @@ function CustomerProfiling({state,setState,onPlan,onCreate,onProfiles,mode='prof
 // END CUSTOMER PROFILING
 
 // BEGIN BRAND LOGO
-function BrandMark({size=34,className=''}:{size?:number;className?:string}) {
-  return <svg className={'brand-logo '+className} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="15" fill="#21675D"/><path d="M19 24h26l-2.6 23.2a3 3 0 0 1-3 2.8H24.6a3 3 0 0 1-3-2.8z" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinejoin="round"/><path d="M25.5 24v-3a6.5 6.5 0 0 1 13 0v3" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round"/><path d="M25.6 36.4l4.6 4.6 8.6-9" fill="none" stroke="#DCECE6" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-}
+
 // END BRAND LOGO
 
 // BEGIN V2 MODULES
@@ -2298,7 +2296,7 @@ function Landing({brand}: {brand: string}) {
     return () => { io.disconnect(); scroller.removeEventListener('scroll', onScroll); };
   }, []);
   return <div className="cp-landing" ref={rootRef}><style>{landingCss}</style>
-    <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandMark size={26}/>{brand}</span><nav className="l-row l-links"><a href="#how">How it works</a><NavigationAction navigation={loginLink} className="l-link">Log in</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">Start free</NavigationAction></nav></div></header>
+    <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandIcon size={26}/>{brand}</span><nav className="l-row l-links"><a href="#how">How it works</a><NavigationAction navigation={loginLink} className="l-link">Log in</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">Start free</NavigationAction></nav></div></header>
     <section className="l-hero"><div className="l-glow" ref={glowRef} aria-hidden="true"/><div className="l-wrap">
       <p className="l-eyebrow lv">For convenience-store managers</p>
       <h1 className="lv d1">Know who to win back.<br/>Before you discount.</h1>

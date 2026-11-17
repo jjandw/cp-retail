@@ -8,9 +8,7 @@ import { cloudEnabled } from '@/lib/supabase-client';
 import { defaultLandingCopy, defaultLandingImage, landingDemoUrl, landingImageUrl, readPublishedLanding } from '@/lib/landing-content';
 import type { LandingCopy } from '@/lib/landing-content';
 
-function BrandMark({size=34,className=''}:{size?:number;className?:string}) {
-  return <svg className={'brand-logo '+className} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="15" fill="#21675D"/><path d="M19 24h26l-2.6 23.2a3 3 0 0 1-3 2.8H24.6a3 3 0 0 1-3-2.8z" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinejoin="round"/><path d="M25.5 24v-3a6.5 6.5 0 0 1 13 0v3" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round"/><path d="M25.6 36.4l4.6 4.6 8.6-9" fill="none" stroke="#DCECE6" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-}
+
 
 // BEGIN V2 LANDING
 const LANDING_MARGIN = 30, LANDING_DISCOUNT = 10;
