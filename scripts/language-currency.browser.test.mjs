@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+import { chromium } from 'playwright';
+import { createServer } from 'vite';
+
+test('language and display currency preserve in-progress assumptions and survive reload', {timeout: 60000}, async t => {
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const server = await createServer({configFile:false, root, envDir:false,
+    resolve:{alias:{'@': root + 'src'}}, server:{host:'127.0.0.1',port:4177,strictPort:true,hmr:false}});
+  t.after(() => server.close());
+  await server.listen();
+  const browser = await chromium.launch({channel:process.env.CP_RETAIL_BROWSER_CHANNEL || undefined});
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  page.setDefaultTimeout(8000);
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.route('https://api.frankfurter.dev/**', route => route.fulfill({json:{base:'THB',date:'2026-11-17',rates:{CNY:0.2,USD:0.03}}}));
+  await page.goto('http://127.0.0.1:4177/workspace?view=recommendations');
+  await page.getByText(/1 THB = 0.03 USD/).waitFor();
+  await page.getByRole('heading', {name:'Operational recommendations',exact:true}).waitFor();
+  await page.getByLabel(/^Starting scenario/).selectOption('demo-snack-drink-baseline');
+  await page.getByLabel('Maximum discount (%)', {exact:true}).fill('12');
+  await page.getByLabel('Language', {exact:true}).selectOption('zh-CN');
+  await page.getByRole('heading',{name:'运营建议',exact:true}).waitFor();
+  assert.equal(await page.locator('html').getAttribute('lang'), 'zh-CN');
+  assert.equal(await page.locator('#cp-currency').inputValue(), 'CNY');
+  assert.equal(await page.getByLabel('最大折扣（%）',{exact:true}).inputValue(), '12');
+  assert.ok(await page.getByText('¥19.00', {exact:true}).count());
+  await page.locator('#cp-currency').selectOption('USD');
+  assert.ok(await page.getByText('US$2.85', {exact:true}).count());
+  assert.equal(await page.getByLabel('最大折扣（%）',{exact:true}).inputValue(), '12');
+  await page.reload();
+  await page.getByRole('heading',{name:'运营建议',exact:true}).waitFor();
+  assert.equal(await page.locator('#cp-currency').inputValue(), 'USD');
+  await page.locator('#cp-language').selectOption('en');
+  assert.equal(await page.locator('#cp-currency').inputValue(), 'USD');
+  await page.setViewportSize({width:390,height:844});
+  assert.ok(await page.locator('#cp-language').isVisible());
+  assert.ok(await page.locator('#cp-currency').isVisible());
+  assert.deepEqual(errors, []);
+});

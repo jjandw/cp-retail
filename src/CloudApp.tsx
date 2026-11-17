@@ -1,4 +1,4 @@
-import React, { lazy, useEffect, useState, useSyncExternalStore } from 'react';
+import React, { lazy, useEffect, useState, useSyncExternalStore } from '@/i18n/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CloudAccount, CloudAuthForm, workspaceDestination } from './screens/CloudAccount';
 import { getAuthState, subscribeAuth } from './lib/supabase-client';

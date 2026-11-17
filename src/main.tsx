@@ -4,6 +4,7 @@ import { demoUser, WorkspaceIdentity } from './lib/user';
 import { cloudEnabled } from './lib/supabase-client';
 import { workspacePaths } from './lib/routes.mjs';
 import './shell.css';
+import { LanguageProvider, LanguageSwitcher } from './i18n/language';
 
 const Landing = lazy(() => import('./screens/Landing'));
 const Workspace = lazy(() => import('./screens/Workspace'));
@@ -38,5 +39,5 @@ function App() {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <Suspense fallback={<main className="preview-entry" role="status">Loading CP Retail…</main>}><App /></Suspense>,
+  <LanguageProvider><LanguageSwitcher /><Suspense fallback={<main className="preview-entry" role="status">Loading CP Retail…</main>}><App /></Suspense></LanguageProvider>,
 );

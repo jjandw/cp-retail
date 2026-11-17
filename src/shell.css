@@ -9,6 +9,26 @@
 
 body { margin: 0; }
 
+.cp-language-bar { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 10px 24px; background: #102b25; color: #f5fff9; font-size: 16px; line-height: 1.5; }
+.cp-language-bar select { font: inherit; color: #173e33; background: #fff; border: 1px solid #9bbcaf; border-radius: 8px; padding: 7px 12px; min-height: 44px; }
+.cp-language-bar select:focus-visible { outline: 3px solid #a9edd5; outline-offset: 3px; }
+.cp-display-choice { display:flex; align-items:center; gap:10px; }
+.cp-exchange-note { font-size: 13px; color: #d7eee3; line-height: 1.6; }
+.cp-language-bar button { font: inherit; background: transparent; color: inherit; border: 1px solid #9bbcaf; border-radius: 8px; padding: 8px 12px; min-height: 44px; cursor: pointer; }
+#root .cp-retail { line-height: 1.65; scroll-margin-top:var(--cp-toolbar-height, 88px); }
+#root .cp-retail .sidebar { top:var(--cp-toolbar-height, 88px); height:calc(100dvh - var(--cp-toolbar-height, 88px)); }
+#root .cp-retail .input { font-size: 17px; min-height: 44px; }
+#root .cp-retail .btn, #root .cp-retail .nav-button { min-height: 44px; }
+#root .cp-retail .ops-fields label, #root .cp-retail .ops-demand label { line-height: 1.6; }
+html[lang="zh-CN"] { --cp-font: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif; }
+html[lang="zh-CN"] #root .cp-retail { letter-spacing: normal; }
+@media(max-width: 720px) {
+  .cp-language-bar { padding: 8px 16px; justify-content:flex-start; }
+  .cp-display-choice { flex:1 1 140px; flex-direction:column; align-items:stretch; gap:4px; }
+  .cp-display-choice label { font-size:14px; }
+  .cp-exchange-note { flex-basis:100%; font-size:12px; }
+}
+
 /* Softr supplied this inherited theme font outside the exported block. */
 #root .cp-retail, #root .cp-landing { font-family: var(--cp-font); }
 
@@ -33,7 +53,7 @@ body { margin: 0; }
 
 .preview-entry-card a { color: inherit; }
 .preview-brand { display: inline-flex; gap: 12px; align-items: center; font-weight: 650; text-decoration: none; }
-.preview-kicker { margin-top: 32px; text-transform: uppercase; letter-spacing: .14em; font-size: 12px; color: #9ee1cc; }
+.preview-kicker { margin-top: 32px; text-transform: uppercase; letter-spacing: .14em; font-size:15px; color: #9ee1cc; }
 .preview-entry-card h1 { margin: 10px 0 18px; font-size: clamp(28px, 7vw, 42px); line-height: 1.1; }
 .preview-entry-card p { line-height: 1.6; }
 .preview-actions { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-top: 24px; }
