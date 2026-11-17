@@ -82,9 +82,9 @@ test('Chinese scenario creation, comparison and pending-decision saving remain f
  await page.goto('http://127.0.0.1:4177/workspace');
  await page.getByRole('button',{name:/打开演示店铺/}).first().click();
  await page.getByRole('button',{name:/待挽回常客/}).first().click();
- await page.getByLabel(/^无优惠时，预计再次到店/).fill('20');
- await page.getByLabel(/^有优惠时，预计再次到店/).fill('50');
- await page.getByLabel(/^毛利率/).fill('35');
+ assert.equal(await page.getByRole('slider',{name:/^无优惠时，预计再次到店/}).inputValue(),'20');
+ const initialPoint=await page.locator('.offer-curve circle').getAttribute('cx');const offerSlider=page.getByRole('slider',{name:/^有优惠时，预计再次到店/});assert.equal(await offerSlider.inputValue(),'50');await offerSlider.press('Home');assert.equal(await offerSlider.inputValue(),'20');await page.getByText('未达到回本条件',{exact:true}).waitFor();await offerSlider.press('End');assert.equal(await offerSlider.inputValue(),'100');assert.notEqual(await page.locator('.offer-curve circle').getAttribute('cx'),initialPoint);
+ assert.equal(await page.getByRole('slider',{name:/^毛利率/}).inputValue(),'35');
  await page.getByRole('button',{name:'下一步：比较行动方案',exact:true}).click();
  await page.getByRole('heading',{name:'创建方案',exact:true}).waitFor();await audit('create-form');
  assert.equal(await page.getByLabel(/^比较顾客组/).inputValue(),'待挽回常客');
@@ -102,8 +102,8 @@ test('Chinese scenario creation, comparison and pending-decision saving remain f
  await page.getByRole('button',{name:'账号',exact:true}).click();await dialog.locator('#cp-currency').selectOption('CNY');await dialog.getByRole('button',{name:'完成',exact:true}).click();
  assert.equal(await page.getByLabel(/^比较用单位成本/).inputValue(),'13.3');
  await page.getByText('更多假设',{exact:true}).click();await page.getByLabel(/^安全库存目标/).fill('400');await page.getByLabel('假设销量，折扣为 0% 时',{exact:true}).fill('80');await page.getByLabel('假设销量，折扣为 5% 时',{exact:true}).fill('100');await page.getByLabel('假设销量，折扣为 10% 时',{exact:true}).fill('130');
- await page.getByRole('button',{name:'比较行动方案',exact:true}).last().click();await page.getByRole('heading',{name:'调整后会有什么变化',exact:true}).waitFor();await audit('results');
- await page.getByRole('button',{name:'选择此方案',exact:true}).first().click();await audit('save-form');assert.ok((await page.getByLabel(/^新方案名称/).inputValue()).startsWith('运营 - '));await page.getByLabel(/^店长选择理由/).fill('先核对需求与库存，再小范围试行。');await page.getByRole('button',{name:'另存为新方案',exact:true}).click();await page.getByRole('heading',{name:'新方案已保存',exact:true}).waitFor();await audit('plan-saved');
+ await page.getByRole('button',{name:'比较行动方案',exact:true}).last().click();await page.getByRole('heading',{name:'调整后会有什么变化',exact:true}).waitFor();await audit('results');const chartValues=await page.locator('.decision-chart-grid').first().innerText();await page.getByLabel('对比指标',{exact:true}).selectOption('revenue');assert.notEqual(await page.locator('.decision-chart-grid').first().innerText(),chartValues);await page.getByLabel('对比指标',{exact:true}).selectOption('contribution');
+ await page.locator('.comparison-bar-row:not(:disabled)').first().click();await audit('save-form');assert.ok((await page.getByLabel(/^新方案名称/).inputValue()).startsWith('运营 - '));await page.getByLabel(/^店长选择理由/).fill('先核对需求与库存，再小范围试行。');await page.getByRole('button',{name:'另存为新方案',exact:true}).click();await page.getByRole('heading',{name:'新方案已保存',exact:true}).waitFor();await audit('plan-saved');
  await page.getByRole('button',{name:'保存待审核决策',exact:true}).click();await page.getByText('待审核决策已保存',{exact:true}).waitFor();await audit('decision-saved');
 
 });
