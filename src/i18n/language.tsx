@@ -1,37 +1,11 @@
-import React, { createContext, useEffect, useState, useRef, useLayoutEffect } from 'react';
-import { zh } from './zh';
+import React, { createContext, useEffect, useState, useRef } from 'react';
+import { translate } from './translation.mjs';
+export { translate } from './translation.mjs';
 import { RATE_URL, validateRates } from './currency.mjs';
 export type Language = 'en' | 'zh-CN';
 export type Currency = 'CNY' | 'USD';
 const storageKey = 'cp-retail-language';
 export const LanguageContext = createContext<any>({ language: 'en', currency: 'USD', rates: null, setLanguage: () => {}, setCurrency: () => {} });
-
-export function translate(text: string, language: Language): string {
-  if (language === 'en') return text;
-  const core = text.trim();
-  if (!core) return text;
-  const match = zh[core];
-  if (match) return text.replace(core, match);
-  const patterns: [RegExp, string][] = [
-    [/^Use (.+)% discount with (.+) assumed units over (.+) days\.$/, '使用 $1% 折扣，假设 $3 天内销售 $2 件。'],
-    [/^Compared (.+) explicit demand assumptions against the discount, margin and stock limits\.$/, '已对比 $1 组明确的销量假设，并检查折扣、毛利和库存限制。'],
-    [/^Keep the reference price, cap sales at (.+) assumed units and reserve a (.+)-unit buffer\.$/, '保持参考售价，假设销量上限为 $1 件，并预留 $2 件安全库存。'],
-    [/^Your no-discount assumption is (.+) units\. That volume already fits the available stock and buffer\.$/, '不打折时的假设销量为 $1 件，现有库存可覆盖销量和安全库存。'],
-    [/^Your no-discount assumption is (.+) units\. Reserving the buffer lowers the cap by (.+) units\.$/, '不打折时的假设销量为 $1 件，预留安全库存后销量上限减少 $2 件。'],
-    [/^At (.+)% discount, keep stock unchanged and cap assumed sales at (.+) units\.$/, '使用 $1% 折扣，库存保持不变，假设销量上限为 $2 件。'],
-    [/^At (.+)% discount, model (.+) additional units and cap assumed sales at (.+) units\.$/, '使用 $1% 折扣，假设补货 $2 件，假设销量上限为 $3 件。'],
-    [/^At least (.+)% of this group must return with the offer\. You assumed (.+)%\.$/, '有优惠时，此顾客组至少需要 $1% 回流才能回本；你假设的回流率为 $2%。'],
-    [/^Assumed (.+)% with the offer$/, '有优惠时假设回流率 $1%'],
-    [/^(.+) days$/, '$1 天'],
-    [/^(.+) customers$/, '$1 位顾客'],
-    [/^Task (.+) of (.+)$/, '任务 $1／$2'],
-    [/^Done in (.+) s$/, '已完成，用时 $1 秒'],
-  ];
-  for (const [pattern, replacement] of patterns) if (pattern.test(core)) return text.replace(core, core.replace(pattern, replacement));
-  // Concatenated validation errors are translated sentence by sentence.
-  if (core.includes('. ')) return text.replace(core, core.split(/(?<=\.) /).map(sentence => zh[sentence] || sentence).join(' '));
-  return text;
-}
 
 export function translateChildren(children: React.ReactNode, language: Language): React.ReactNode {
   return React.Children.map(children, child => typeof child === 'string' ? translate(child, language) : child);
@@ -80,22 +54,47 @@ export function LanguageProvider({children}: {children: React.ReactNode}) {
   return <LanguageContext.Provider value={{language, setLanguage: changeLanguage, currency, setCurrency, rates: quote?.rates || null, rateDate: quote?.date, rateStatus, retryRates: () => setRetry(value => value + 1)}}>{children}</LanguageContext.Provider>;
 }
 
-export function LanguageSwitcher() {
+export function DisplayPreferences() {
   const {language, setLanguage, currency, setCurrency, rates, rateDate, rateStatus, retryRates} = React.useContext(LanguageContext);
-  const bar = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const measure = () => document.documentElement.style.setProperty('--cp-toolbar-height', `${bar.current?.getBoundingClientRect().height || 0}px`);
-    measure();
-    const observer = new ResizeObserver(measure);
-    if (bar.current) observer.observe(bar.current);
-    return () => observer.disconnect();
-  }, []);
-  return <div className="cp-language-bar" ref={bar}><div className="cp-display-choice"><label htmlFor="cp-language">{language === 'zh-CN' ? '界面语言' : 'Language'}</label>
-    <select id="cp-language" value={language} onChange={e => setLanguage(e.target.value as Language)}>
+  const chinese = language === 'zh-CN';
+  return <section className="cp-preferences">
+    <h2>{chinese ? '语言与显示' : 'Language & display'}</h2>
+    <p className="cp-preferences-intro">{chinese ? '选择你习惯的语言和金额显示方式。设置会自动保存。' : 'Choose your preferred language and display currency. Changes save automatically.'}</p>
+    <div className="cp-preference-field"><label htmlFor="cp-language">{chinese ? '界面语言' : 'Language'}</label><select id="cp-language" value={language} onChange={e => setLanguage(e.target.value as Language)}>
       <option value="en" lang="en">English</option><option value="zh-CN" lang="zh-CN">简体中文</option>
-    </select></div><div className="cp-display-choice"><label htmlFor="cp-currency">{language === 'zh-CN' ? '显示币种' : 'Display currency'}</label>
-    <select id="cp-currency" value={currency} onChange={e => setCurrency(e.target.value)}><option value="CNY">人民币 CNY</option><option value="USD">US Dollar USD</option></select></div>
-    <small className="cp-exchange-note" role="status">{rates ? `Frankfurter · ${rateStatus === 'error' ? (language === 'zh-CN' ? '缓存汇率' : 'Cached rates') : (language === 'zh-CN' ? '汇率日期' : 'Rate date')}: ${rateDate} · 1 THB = ${rates[currency]} ${currency}` : rateStatus === 'loading' ? (language === 'zh-CN' ? '正在加载汇率，暂显示原币 THB' : 'Loading rates; amounts currently in THB') : language === 'zh-CN' ? '汇率暂不可用，金额仍显示原币 THB' : 'Rates unavailable: amounts remain in THB'}<br/>{language === 'zh-CN' ? '输入与 CSV 使用原始泰铢；换算用于查看结果。' : 'Inputs and CSV use original THB; results are converted for display.'}</small>
-    {rateStatus === 'error' && <button type="button" onClick={retryRates}>{language === 'zh-CN' ? '重试汇率' : 'Retry rates'}</button>}
-    </div>;
+    </select></div>
+    <div className="cp-preference-field"><label htmlFor="cp-currency">{chinese ? '显示币种' : 'Display currency'}</label><select id="cp-currency" value={currency} onChange={e => setCurrency(e.target.value)}>
+      <option value="CNY">{chinese ? '人民币（CNY）' : 'Chinese yuan (CNY)'}</option><option value="USD">{chinese ? '美元（USD）' : 'US dollar (USD)'}</option>
+    </select></div>
+    <details className="cp-rate-details"><summary>{chinese ? '金额换算说明' : 'About converted amounts'}</summary>
+      <p>{chinese ? '结果按参考汇率换算显示。输入、CSV 和已保存记录仍使用原始泰铢。' : 'Results use reference exchange rates. Inputs, CSVs and saved records remain in original THB.'}</p>
+      <p role="status">{rates ? `${chinese ? '汇率日期' : 'Rate date'}: ${rateDate} · 1 THB = ${rates[currency]} ${currency}${rateStatus === 'error' ? (chinese ? '（缓存汇率）' : ' (cached)') : ''}` : chinese ? '汇率暂未就绪，金额保留原币 THB。' : 'No rate available yet; amounts remain in THB.'}</p>
+      {rateStatus === 'error' && <button type="button" onClick={retryRates}>{chinese ? '重新获取汇率' : 'Retry exchange rates'}</button>}
+    </details>
+  </section>;
+}
+
+export function AccountPreferencesDialog() {
+  const {language} = React.useContext(LanguageContext);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const trigger = useRef<HTMLElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const chinese = language === 'zh-CN';
+  useEffect(() => {
+    const show = () => { trigger.current = document.activeElement as HTMLElement; setOpen(true); };
+    window.addEventListener('cp-open-preferences', show);
+    return () => window.removeEventListener('cp-open-preferences', show);
+  }, []);
+  useEffect(() => { if (open && !dialog.current?.open) dialog.current?.showModal(); }, [open]);
+  const close = () => dialog.current?.close();
+  return <dialog className="cp-preferences-dialog" ref={dialog} aria-labelledby="cp-preferences-title" onClose={() => { setOpen(false); trigger.current?.focus(); }} onClick={e => { if(e.target === e.currentTarget) { const rect=e.currentTarget.getBoundingClientRect(); if(e.clientX<rect.left || e.clientX>rect.right || e.clientY<rect.top || e.clientY>rect.bottom) close(); } }}>
+    <header><div><span>CP Retail</span><h1 id="cp-preferences-title">{chinese ? '账号设置' : 'Account settings'}</h1></div><button type="button" className="cp-dialog-close" onClick={close} aria-label={chinese ? '关闭设置' : 'Close settings'}>×</button></header>
+    {open && <DisplayPreferences />}
+    <footer><a href="/account">{chinese ? '管理账号资料' : 'Manage account profile'}</a><button type="button" className="cp-preferences-done" onClick={close}>{chinese ? '完成' : 'Done'}</button></footer>
+  </dialog>;
+}
+
+export function LanguageToggle() {
+  const {language, setLanguage} = React.useContext(LanguageContext);
+  return <button type="button" className="cp-language-toggle" onClick={() => setLanguage(language === 'zh-CN' ? 'en' : 'zh-CN')}>{language === 'zh-CN' ? 'English' : '简体中文'}</button>;
 }

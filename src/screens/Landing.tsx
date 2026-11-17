@@ -1,3 +1,5 @@
+import { BrandLogo } from '@/components/brand-logo';
+import { LanguageToggle } from '@/i18n/language';
 import React, { useState, useRef, useEffect } from '@/i18n/react';
 import { NavigationAction } from '@/components/navigation-action';
 import { useNavigationSetting, useTextSetting } from '@/lib/editable-settings';
@@ -89,7 +91,7 @@ export function LandingPage({brand, content, imageUrl, preview = false, signedIn
     return () => { io.disconnect(); scroller.removeEventListener('scroll', onScroll); };
   }, []);
   return <div className="cp-landing" ref={rootRef}><style>{landingCss}</style>
-    <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandMark size={26}/>{brand}</span><nav className="l-row l-links"><a href="#how">How it works</a>{signedIn ? <a href="/workspace" className="l-pill">Open workspace</a> : <><NavigationAction navigation={loginLink} className="l-link">{cloudEnabled ? 'Log in' : 'Preview access'}</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">{cloudEnabled ? 'Get started' : 'Try demo'}</NavigationAction></>}</nav></div></header>
+    <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandLogo /></span><nav className="l-row l-links"><a href="#how">How it works</a>{signedIn ? <a href="/workspace" className="l-pill">Open workspace</a> : <><NavigationAction navigation={loginLink} className="l-link">{cloudEnabled ? 'Log in' : 'Preview access'}</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">{cloudEnabled ? 'Get started' : 'Try demo'}</NavigationAction></>}</nav></div></header>
     <section className="l-hero"><div className="l-glow" ref={glowRef} aria-hidden="true"/><div className="l-wrap">
       <p className="l-eyebrow lv">For convenience-store managers</p>
       <h1 className="lv d1" style={{whiteSpace:'pre-line'}}>{copy.title}</h1>
@@ -127,7 +129,7 @@ export function LandingPage({brand, content, imageUrl, preview = false, signedIn
       <p className="l-eyebrow lv">Win back</p><h2 className="lv d1">Bring your regulars home.</h2>
       <img className="l-feat-img lv d3" src="/studio-media/08c64c26-a162-4637-912a-d127dd3009df.jpeg" alt="Win back regulars" loading="lazy"/>
     </div></section>
-    <footer className="l-foot"><div className="l-wrap l-row"><span>{brand} · Student prototype, ENT207TC Digital Startup Lab</span><span>All demo figures are simulated.</span></div></footer>
+    <footer className="l-foot"><div className="l-wrap l-row"><span>{brand} · Student prototype, ENT207TC Digital Startup Lab</span><span>All demo figures are simulated.</span><LanguageToggle /></div></footer>
   </div>;
 }
 

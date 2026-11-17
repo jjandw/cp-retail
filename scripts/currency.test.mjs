@@ -10,6 +10,8 @@ test('currency conversion changes display amounts without changing quantities, p
   assert.equal(formatCurrencyText('฿35.5k', 'USD', { USD: 0.03 }, 'en'), '$1,065.00');
   assert.equal(source, '฿1,000.00 · 150 customers · 10%');
   assert.equal(formatCurrencyText('฿1,000.00', 'CNY', { CNY: 0.2 }, 'zh-CN'), '¥200.00');
+  assert.equal(formatCurrencyText('原始金额 400 泰铢', 'CNY', { CNY: 0.2 }, 'zh-CN'), '原始金额 400 泰铢');
+  assert.equal(formatCurrencyText('Revenue (THB): ฿100.00', 'USD', { USD: 0.03 }, 'en'), 'Revenue (USD): $3.00');
 });
 
 test('unavailable rates keep amounts and labels in THB, never silently relabel', () => {
