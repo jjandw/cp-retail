@@ -16,9 +16,12 @@ body { margin: 0; }
 html[lang="zh-CN"] { --cp-font:'Inter','PingFang SC','Microsoft YaHei',system-ui,sans-serif; }
 html[lang="zh-CN"] #root .cp-retail { letter-spacing:normal; }
 .cp-brand-lockup { display:block; width:196px; height:auto; max-width:100%; border-radius:10px; background:#faf9f6; }
-#root .cp-retail .cp-workspace-brand { display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding:20px; }
-#root .cp-retail .cp-workspace-brand .cp-brand-lockup { width:177px; }
-#root .cp-retail .cp-workspace-brand .brand-subtitle { margin:0; font-size:14px; }
+#root .cp-retail .cp-workspace-brand { display:block; padding:26px 20px 20px; background:transparent; }
+#root .cp-retail .cp-sidebar-brand-row { display:flex; align-items:center; gap:10px; min-width:0; }
+#root .cp-retail .cp-sidebar-mark { display:block; width:44px; height:44px; flex-shrink:0; object-fit:contain; mix-blend-mode:lighten; }
+#root .cp-retail .cp-sidebar-wordmark { min-width:0; }
+#root .cp-retail .cp-sidebar-wordmark strong { display:block; font-size:21px; font-weight:650; line-height:1.25; letter-spacing:-.7px; white-space:nowrap; color:#eef5f2; }
+#root .cp-retail .cp-workspace-brand .brand-subtitle { margin:5px 0 0; font-size:13px; line-height:1.4; color:#8fa69e; }
 #root .cp-landing .l-nav .l-wrap { height:auto; min-height:76px; padding-top:8px; padding-bottom:8px; }
 #root .cp-landing .cp-brand-lockup { width:180px; }
 .cp-preferences-dialog { box-sizing:border-box; width:min(480px,calc(100vw - 32px)); max-height:calc(100dvh - 40px); padding:28px; border:1px solid #dce7e0; border-radius:24px; color:#223b36; background:#fbfcf9; box-shadow:0 24px 100px #051b1840; font-family:var(--cp-font); }
