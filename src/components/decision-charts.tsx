@@ -1,4 +1,5 @@
-import React, {useState} from '@/i18n/react';
+import React, {useState,useRef,useEffect} from '@/i18n/react';
+import {LanguageContext} from '@/i18n/language';
 
 const money=(n:number)=>'฿'+n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 
@@ -11,31 +12,51 @@ export function AssumptionSlider({label,value,onChange,min=0,max=100,step=1,help
 }
 
 export function OfferResponseChart({check}:any) {
-  const i=check.inputs;
-  const gain=(rate:number)=>Math.round(i.customerCount*i.averageBasket*(rate/100*(i.marginPercent-i.discountPercent)/100-i.baselineReturnPercent*i.marginPercent/10000)*100)/100;
-  const ends=[gain(0),gain(100),0];
-  const low=Math.min(...ends),high=Math.max(...ends);
-  const pad=Math.max((high-low)*.12,1);
-  const min=low-pad,max=high+pad;
-  const x=(n:number)=>96+n*4.7,y=(n:number)=>28+(max-n)/(max-min)*174;
+  const {language,currency,rates}=React.useContext(LanguageContext);
+  const plotRef=useRef<HTMLDivElement|null>(null);
+  const [width,setWidth]=useState(800);
+  const gradientId='offer-area-'+React.useId().replace(/:/g,'');
+  useEffect(()=>{const node=plotRef.current;if(!node)return;const observer=new ResizeObserver(entries=>setWidth(Math.max(260,entries[0].contentRect.width)));observer.observe(node);return()=>observer.disconnect();},[]);
+  const i=check.inputs,compact=width<520;
+  const rate=rates?.[currency]>0?rates[currency]:1;
+  const code=rates?.[currency]>0?currency:'THB';
+  const gain=(r:number)=>Math.round(i.customerCount*i.averageBasket*(r/100*(i.marginPercent-i.discountPercent)/100-i.baselineReturnPercent*i.marginPercent/10000)*100)/100;
+  const low=Math.min(gain(0)*rate,gain(100)*rate,0),high=Math.max(gain(0)*rate,gain(100)*rate,0);
+  const rough=(high-low||4)/4,power=Math.pow(10,Math.floor(Math.log10(rough))),fraction=rough/power;
+  const step=([1,2,2.5,5,10].find(v=>v>=fraction)||10)*power;
+  const min=Math.floor(low/step)*step,max=Math.ceil(high/step)*step||step;
+  const ticks=Array.from({length:Math.round((max-min)/step)+1},(_,n)=>min+n*step);
+  const axisMoney=(v:number)=>v===0?'0':new Intl.NumberFormat(language==='zh-CN'?'zh-CN':'en-US',{style:'currency',currency:code,notation:Math.abs(v)>=10000?'compact':'standard',maximumFractionDigits:step<1?2:0}).format(v);
+  const left=Math.min(compact?88:108,Math.max(52,...ticks.map(v=>axisMoney(v).length*(compact?6.3:7)+13))),right=width-18;
+  const height=compact?252:294,top=32,bottom=height-28;
+  const x=(r:number)=>left+r/100*(right-left),y=(v:number)=>top+(max-v*rate)/(max-min)*(bottom-top);
   const zero=y(0),pointX=x(i.offerReturnPercent),pointY=y(check.incrementalGrossProfit);
-  const threshold=check.breakEvenReturnPercent;
-  const hasThreshold=threshold!==null&&threshold>=0&&threshold<=100;
+  const threshold=check.breakEvenReturnPercent,hasThreshold=threshold!==null&&threshold>=0&&threshold<=100;
+  const profitable=check.incrementalGrossProfit>=0;
+  const start=hasThreshold?threshold:0;
+  const positive=gain(100)>0;
+  const area=positive?`M ${x(start)} ${zero} L ${x(100)} ${y(gain(100))} L ${x(100)} ${zero} Z`:'';
   const points=Array.from({length:21},(_,n)=>`${x(n*5)},${y(gain(n*5))}`).join(' ');
-  return <section className="offer-response-chart" aria-label="Offer break-even chart">
-    <div className="row between"><h3>Where does the offer pay back?</h3><span className="small muted">Extra gross profit (THB)</span></div>
-    <div className="chart-key small"><span><i className="key-line"/>Extra gross profit</span><span><i className="key-threshold"/>Break-even threshold</span><span><i className="key-dot"/>Your assumption</span></div>
-    <svg className="offer-curve" viewBox="0 0 600 256" role="img" aria-label="Extra gross profit across assumed return rates">
-      <rect x="96" y="28" width="470" height={Math.max(0,zero-28)} fill="#e8f3ed"/>
-      {[low,0,high].filter((v,n,a)=>a.indexOf(v)===n).map(value=><g key={value}><line x1="96" x2="566" y1={y(value)} y2={y(value)} stroke={value===0?'#8b9b94':'#e1e8e3'} strokeDasharray={value===0?'4 4':undefined}/><text className={"curve-money-label "+(value===0?"is-zero":"")} x="84" y={y(value)+4} textAnchor="end">{value===0?'0':money(value)}</text></g>)}
-      {[0,25,50,75,100].map(value=><g key={value}><line x1={x(value)} x2={x(value)} y1="28" y2="202" stroke="#e7ece8"/><text x={x(value)} y="224" textAnchor="middle">{value}%</text></g>)}
-      {hasThreshold&&<line className="curve-threshold" x1={x(threshold)} x2={x(threshold)} y1="24" y2="202" stroke="#a47a43" strokeWidth="2" strokeDasharray="5 5"/>}
-      <polyline points={points} fill="none" stroke="#21675d" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1={pointX} x2={pointX} y1={pointY} y2="202" stroke="#21675d" opacity=".3"/>
-      <circle cx={pointX} cy={pointY} r="6" fill="#21675d" stroke="#fff" strokeWidth="2"/>
-      <text x="331" y="249" textAnchor="middle">Expected return with an offer (%)</text>
-    </svg>
-    <div className="chart-outcome row between"><span>{hasThreshold?<><span>Break-even return:</span> <strong>{threshold.toFixed(1)}%</strong></>:<strong>No break-even in this range</strong>}</span><span>Your assumption: <strong>{i.offerReturnPercent}%</strong> · {money(check.incrementalGrossProfit)}</span></div>
+  const gap=hasThreshold?i.offerReturnPercent-threshold:null;
+  return <section className={'offer-response-chart '+(profitable?'is-profitable':'is-below')} aria-label="Offer break-even chart">
+    <div className="response-heading"><div><p className="response-kicker">Return offer</p><h3>Offer break-even trend</h3></div><div className="response-total"><span>Extra gross profit at your assumption</span><strong>{(check.incrementalGrossProfit>0?'+':'')+money(check.incrementalGrossProfit)}</strong></div></div>
+    <div className="response-plot" ref={plotRef}>
+      {hasThreshold&&<div className="response-threshold-label" style={{left:Math.max(left,Math.min(width-108,x(threshold)-42))}}>Break-even <strong>{threshold.toFixed(1)}%</strong></div>}
+      <svg className="offer-curve" viewBox={`0 0 ${width} ${height}`} height={height} role="img" aria-label="Extra gross profit across assumed return rates">
+        <defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5a9c80" stopOpacity=".19"/><stop offset="100%" stopColor="#5a9c80" stopOpacity=".015"/></linearGradient></defs>
+        {ticks.map(value=><g key={value}><line x1={left} x2={right} y1={y(value/rate)} y2={y(value/rate)} className={value===0?'response-zero':'response-grid'}/><text x={left-12} y={y(value/rate)+4} textAnchor="end">{axisMoney(value)}</text></g>)}
+        {area&&<path d={area} fill={`url(#${gradientId})`}/>}
+        {hasThreshold&&<line x1={x(threshold)} x2={x(threshold)} y1="29" y2={bottom} className="response-threshold"/>}
+        <polyline points={points} fill="none" className="response-line-muted"/>
+        {positive&&<line x1={x(start)} x2={x(100)} y1={zero} y2={y(gain(100))} className="response-line-positive"/>}
+        <line x1={pointX} x2={pointX} y1={pointY+8} y2={bottom} className="response-projection"/>
+        <circle cx={pointX} cy={pointY} r="6" className="response-current-point"/>
+        {(compact?[0,50,100]:[0,20,40,60,80,100]).map(value=><text key={value} x={x(value)} y={height-7} textAnchor={value===100?'end':value===0?'start':'middle'}>{value}%</text>)}
+      </svg>
+      <div className="response-point-label" style={{left:Math.max(left,Math.min(width-126,pointX+13)),top:Math.max(32,Math.min(bottom-44,pointY-47))}}><span>Your assumption</span><strong>{i.offerReturnPercent}%</strong></div>
+    </div>
+    <p className="response-axis-caption">Expected return with an offer (%)</p>
+    <div className="response-bottom"><span className="response-status-dot" aria-hidden="true"/>{gap===null?<span>No break-even in this range</span>:Math.abs(gap)<.05?<span>At break-even</span>:<><span>{gap>=0?'Above break-even by':'Below break-even by'}</span><strong>{Math.abs(gap).toFixed(1)}</strong><span>percentage points</span></>}</div>
   </section>;
 }
 
