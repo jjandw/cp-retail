@@ -1,4 +1,4 @@
-import React from 'react';
+import React from '@/i18n/react';
 import { navigationHref } from '@/lib/editable-settings';
 
 export function NavigationAction({ navigation, recordId, children, className }: {

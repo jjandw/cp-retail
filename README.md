@@ -70,3 +70,22 @@ In Cloudflare **Workers & Pages → Create application → Pages → Connect to 
 Team members create a branch in GitHub and open a PR to `main`. Reviewers open the Cloudflare Pages check on the PR, verify the linked deployment's `/release.json` against the PR head, and check both GitHub Actions jobs before approving. Enable automatic production builds only after GitHub requires independent approval and passing checks on `main`. If the repository plan cannot enforce these rules, keep automatic production builds off. A maintainer checks approval and CI, merges the PR, and can deploy the reviewed `main` commit with Wrangler. Set `CF_PAGES_BRANCH=main` and `CF_PAGES_COMMIT_SHA` to that commit when running `npm run build:pages` outside Cloudflare, then run `wrangler pages deploy dist --project-name <pages-project> --branch main --commit-hash <commit>`.
 
 After a release, check the live `/release.json` and sign-in and workspace routes. For a frontend rollback, open the Cloudflare Pages project's deployment history, find the last approved production deployment, and choose **Rollback to this deployment**. Recheck the live release and routes. Content revisions use the Content studio rollback, and Supabase schema and data use their own migration procedures.
+
+
+## Language, text size and display currency
+
+The top toolbar switches between English and Simplified Chinese and remembers the selection. Switching language resets the default display currency to USD (English) or CNY (Chinese); a separate currency selector can override it. The curated UI dictionary uses English fallback for untranslated text. User-authored content, exported CSVs, snapshots and existing AI replies retain their original content.
+
+Display amounts are converted from THB using the dated public Frankfurter quote for CNY and USD. The toolbar identifies the quote date. The most recent valid quote is cached; failure without a cache preserves THB amounts and labels instead of substituting a currency symbol. Currency conversion is presentation-only: monetary inputs explicitly remain in original THB, and calculations, CSV schemas and stored records are unchanged.
+
+The toolbar height is measured so that sticky navigation and focus scrolling remain visible at desktop and mobile sizes. Font rules are enlarged in the existing themes rather than scaling the page.
+
+Validation commands (after `npm ci`):
+
+```sh
+npm run build
+node --test scripts/currency.test.mjs scripts/workspace-routes.test.mjs supabase/tests/advisor.test.mjs
+node --test --test-concurrency=1 scripts/account-profile.browser.test.mjs scripts/dataset-settings.browser.test.mjs scripts/language-currency.browser.test.mjs scripts/workspace-navigation.browser.test.mjs
+```
+
+Browser checks use Playwright Chromium, or `CP_RETAIL_BROWSER_CHANNEL=chrome` with an installed Chrome browser. Currency tests use fixture quotes, not live market rates.

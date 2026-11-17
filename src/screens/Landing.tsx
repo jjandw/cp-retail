@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from '@/i18n/react';
 import { NavigationAction } from '@/components/navigation-action';
 import { useNavigationSetting, useTextSetting } from '@/lib/editable-settings';
 import { useCurrentUser } from '@/lib/user';
@@ -140,26 +140,26 @@ const landingCss = `
 .cp-landing .l-nav{position:sticky;top:0;z-index:5;background:rgba(7,17,15,.62);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%)}
 .cp-landing .l-nav .l-wrap{height:56px}
 .cp-landing .l-brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:-.01em}
-.cp-landing .l-links{gap:22px;font-size:14px;color:var(--mute)}
+.cp-landing .l-links{gap:22px;font-size:17px;color:var(--mute)}
 .cp-landing .l-links a:hover,.cp-landing .l-link:hover{color:var(--fg)}
-.cp-landing .l-pill{display:inline-flex;align-items:center;justify-content:center;background:var(--fg);color:var(--bg)!important;border-radius:999px;padding:7px 16px;font-weight:600;font-size:14px;transition:transform .1s ease-out,background .2s}
+.cp-landing .l-pill{display:inline-flex;align-items:center;justify-content:center;background:var(--fg);color:var(--bg)!important;border-radius:999px;padding:7px 16px;font-weight:600;font-size:17px;transition:transform .1s ease-out,background .2s}
 .cp-landing .l-pill:hover{background:#fff}
 .cp-landing .l-pill:active{transform:scale(.97)}
-.cp-landing .l-big{padding:12px 24px;font-size:16px}
+.cp-landing .l-big{padding:12px 24px;font-size:18px}
 .cp-landing .l-hero{position:relative;text-align:center;padding:120px 0 96px}
 .cp-landing .l-glow{position:absolute;left:50%;top:-180px;width:1100px;height:720px;margin-left:-550px;background:radial-gradient(closest-side,rgba(62,201,160,.32),transparent 70%);transform:translate3d(0,var(--p,0px),0);pointer-events:none}
-.cp-landing .l-eyebrow{color:var(--mint);font-weight:600;font-size:15px;margin:0}
+.cp-landing .l-eyebrow{color:var(--mint);font-weight:600;font-size:18px;margin:0}
 .cp-landing h1{position:relative;font-size:clamp(44px,8vw,88px);line-height:1.02;letter-spacing:-.045em;margin:14px 0 20px;font-weight:700;background:linear-gradient(180deg,#fff 30%,#9fd9c6);-webkit-background-clip:text;background-clip:text;color:transparent}
 .cp-landing h2{font-size:clamp(34px,5.4vw,60px);line-height:1.05;letter-spacing:-.035em;margin:10px 0 16px;font-weight:700}
 .cp-landing .l-lead{position:relative;color:var(--mute);font-size:clamp(17px,2vw,21px);max-width:620px;margin:0 auto}
 .cp-landing .l-cta{position:relative;display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:center;margin-top:34px}
-.cp-landing .l-more{color:var(--mint)!important;font-weight:600;font-size:16px}
+.cp-landing .l-more{color:var(--mint)!important;font-weight:600;font-size:18px}
 .cp-landing .l-hero-img{position:relative;display:block;max-width:720px;width:100%;margin:40px auto 0;border-radius:22px;border:1px solid rgba(255,255,255,.12);box-shadow:0 50px 120px -50px rgba(62,201,160,.5)}
 .cp-landing .l-feat-img{position:relative;display:block;max-width:720px;width:100%;margin:40px auto 0;border-radius:18px;border:1px solid rgba(255,255,255,.1);box-shadow:0 40px 90px -45px rgba(62,201,160,.45)}
 .cp-landing .l-glass{position:relative;max-width:460px;margin:64px auto 0;text-align:left;border-radius:22px;padding:22px 24px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:0 40px 90px -40px rgba(62,201,160,.45)}
-.cp-landing .l-small{color:var(--mute);font-size:14px;margin:0}
+.cp-landing .l-small{color:var(--mute);font-size:17px;margin:0}
 .cp-landing .l-small b{color:var(--fg)}
-.cp-landing .l-verdict{font-size:34px;font-weight:700;letter-spacing:-.03em;color:var(--mint);margin:4px 0}
+.cp-landing .l-verdict{font-size:38px;font-weight:700;letter-spacing:-.03em;color:var(--mint);margin:4px 0}
 .cp-landing .l-bar{height:8px;border-radius:9px;background:rgba(255,255,255,.1);margin-top:14px;overflow:hidden}
 .cp-landing .l-bar i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#2fb38c,#7ae6c3);transform-origin:left;transform:scaleX(0);transition:transform 1.4s cubic-bezier(.2,.8,.2,1) .5s}
 .cp-landing .l-glass.in .l-bar i{transform:scaleX(1)}
@@ -170,31 +170,31 @@ const landingCss = `
 .cp-landing .l-device-bar{display:flex;gap:6px;padding:10px 14px;background:#0c1715}
 .cp-landing .l-device-bar i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.18)}
 .cp-landing .l-device-body{padding:20px 22px 22px}
-.cp-landing .l-mock{display:grid;gap:12px;font-size:14px}
+.cp-landing .l-mock{display:grid;gap:12px;font-size:17px}
 .cp-landing .l-mock-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .cp-landing .l-mock-kpis div{background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 8px 20px -16px rgba(33,103,93,.5)}
-.cp-landing .l-mock small{display:block;color:#5b6b67;font-size:12px}
-.cp-landing .l-mock-kpis b{font-size:20px;letter-spacing:-.02em}
+.cp-landing .l-mock small{display:block;color:#5b6b67;font-size:15px}
+.cp-landing .l-mock-kpis b{font-size:22px;letter-spacing:-.02em}
 .cp-landing .l-mock-groups{display:grid;gap:8px;background:#fff;border-radius:12px;padding:12px 14px}
 .cp-landing .l-mock-groups div{display:grid;grid-template-columns:86px 1fr 28px;align-items:center;gap:10px}
 .cp-landing .l-mock-groups i{display:block;height:9px;border-radius:9px;background:#cfe3db;transform-origin:left;transform:scaleX(0);transition:transform 1.2s cubic-bezier(.2,.8,.2,1) .4s}
 .cp-landing .l-device.in .l-mock-groups i{transform:scaleX(1)}
 .cp-landing .l-mock-groups .hot i{background:#21675d}
 .cp-landing .l-mock-groups .hot span,.cp-landing .l-mock-groups .hot b{color:#21675d;font-weight:700}
-.cp-landing .l-mock-note,.cp-landing .l-mock-label{margin:0;color:#5b6b67;font-size:12px}
+.cp-landing .l-mock-note,.cp-landing .l-mock-label{margin:0;color:#5b6b67;font-size:15px}
 .cp-landing .l-mock-label{font-weight:700;color:#21675d;text-transform:uppercase;letter-spacing:.04em}
 .cp-landing .l-mock-head{display:flex;justify-content:space-between;align-items:center}
-.cp-landing .l-tag{background:#e3f1ec;color:#21675d;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
-.cp-landing .l-mock h3{margin:0;font-size:17px;letter-spacing:-.01em}
+.cp-landing .l-tag{background:#e3f1ec;color:#21675d;border-radius:999px;padding:3px 10px;font-size:15px;font-weight:700}
+.cp-landing .l-mock h3{margin:0;font-size:19px;letter-spacing:-.01em}
 .cp-landing .l-mock-row{display:flex;justify-content:space-between;background:#fff;border-radius:10px;padding:8px 12px}
 .cp-landing .l-mock ol{margin:0;padding-left:18px;display:grid;gap:4px;color:#223b36}
 .cp-landing .l-stat{font-size:clamp(72px,12vw,128px);font-weight:700;letter-spacing:-.05em;line-height:1;margin:40px 0 8px;background:linear-gradient(90deg,#fff,var(--mint));-webkit-background-clip:text;background-clip:text;color:transparent}
 .cp-landing .l-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:720px;margin:44px auto 18px}
 .cp-landing .l-grid div{display:flex;flex-direction:column;gap:4px;padding:22px 12px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
-.cp-landing .l-grid b{font-size:15px;color:var(--mute);font-weight:600}
-.cp-landing .l-grid span{font-size:24px;font-weight:700;letter-spacing:-.02em}
-.cp-landing .l-grid small{color:var(--mute);font-size:12px}
-.cp-landing .l-foot{padding:28px 0 40px;color:var(--mute);font-size:13px;border-top:1px solid rgba(255,255,255,.06)}
+.cp-landing .l-grid b{font-size:18px;color:var(--mute);font-weight:600}
+.cp-landing .l-grid span{font-size:27px;font-weight:700;letter-spacing:-.02em}
+.cp-landing .l-grid small{color:var(--mute);font-size:15px}
+.cp-landing .l-foot{padding:28px 0 40px;color:var(--mute);font-size:16px;border-top:1px solid rgba(255,255,255,.06)}
 .cp-landing .lv{opacity:0;transform:translateY(28px);transition:opacity .9s cubic-bezier(.2,.8,.2,1),transform .9s cubic-bezier(.2,.8,.2,1)}
 .cp-landing .lv.in{opacity:1;transform:none}
 .cp-landing .d1{transition-delay:.1s}.cp-landing .d2{transition-delay:.2s}.cp-landing .d3{transition-delay:.3s}.cp-landing .d4{transition-delay:.42s}

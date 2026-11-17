@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from '@/i18n/react';
 import { LandingPage } from './Landing';
 import { useTextSetting } from '@/lib/editable-settings';
 import { supabase } from '@/lib/supabase-client';

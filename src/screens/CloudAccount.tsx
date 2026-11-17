@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from '@/i18n/react';
 import { supabase } from '@/lib/supabase-client';
 import { landingStudioPath, workspaceReturnPath } from '@/lib/routes.mjs';
 import { readLandingRole } from '@/lib/landing-content';
