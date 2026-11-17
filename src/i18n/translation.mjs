@@ -3,6 +3,8 @@ import { zh } from './zh.mjs';
 // Numeric templates cover rule-generated advice, including the server's bounded
 // AI renderers. Translation never changes stored evidence or model inputs.
 const templates = [
+  [/^Break-even return: ([\d.]+)%$/, '回本所需再次到店占比：$1%'],
+  [/^Customers expected at ([\d.]+)% without the offer$/, '无优惠时，预计 $1% 的顾客会再次到店'],
   [/^pays back \(break-even ([\d.]+)% return\)$/, '可回本（回本需要 $1% 再次到店）'],
   [/^below break-even \(break-even ([\d.]+)% return\)$/, '未回本（回本需要 $1% 再次到店）'],
   [/^([+−\d,. -]+) units$/, '$1 件'],
