@@ -1,7 +1,7 @@
 import React from 'react';
 
 export function BrandLogo() {
-  return <img className="cp-brand-lockup" src="/cp-retail-logo.png" alt="CP Retail" width="216" height="72" />;
+  return <span className="cp-brand-lockup"><img src="/cp-retail-sidebar-mark-v2.png" alt="" aria-hidden="true" width="44" height="44" /><strong>CP Retail</strong></span>;
 }
 
 export function BrandIcon({size=34,className=''}:{size?:number;className?:string}) {

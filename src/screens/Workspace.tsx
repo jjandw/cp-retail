@@ -201,7 +201,7 @@ const css = `
 .cp-retail .account-identity{min-width:0;flex:1}
 .cp-retail .account-identity strong{display:block;font-size:15px;font-weight:600;line-height:1.6;overflow-wrap:anywhere}
 .cp-retail .account-identity p{font-size:14px;color:var(--muted);line-height:1.6;overflow-wrap:anywhere;margin-top:2px}
-.cp-retail .side-bottom{padding-bottom:52px}
+.cp-retail .side-bottom{padding-bottom:16px}
 .cp-retail .side-bottom .account-settings{color:#285e4d;text-decoration:underline;text-underline-offset:3px;min-height:36px;padding:4px 0;box-shadow:none}
 .cp-retail .side-bottom .account-summary+.account-settings{margin-top:-7px;margin-left:45px}
 .cp-retail .side-bottom .welcome-help{border-top:1px solid #d8e0d6;border-radius:0;padding-top:16px;margin-top:2px;box-shadow:none}
