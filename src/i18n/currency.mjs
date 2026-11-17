@@ -12,6 +12,8 @@ export function formatCurrencyText(text, currency, rates, language) {
   // Match monetary amounts only. Counts, percentages, IDs and input values are untouched.
   let result = text.replace(/(?:฿|THB\s+)([+−-]?\d[\d,]*(?:\.\d+)?)(k)?/g, (_, amount, thousands) => (amount.startsWith('+') ? '+' : '') + formatter.format(Number(amount.replaceAll(',', '').replace('−', '-')) * (thousands ? 1000 : 1) * rate));
   const name = currency === 'CNY' ? (language === 'zh-CN' ? '人民币' : 'Chinese yuan') : (language === 'zh-CN' ? '美元' : 'US dollars');
-  result = result.replace(/Thai baht \(THB\)|泰铢（THB）/g, `${name} (${currency})`).replace(/\bTHB\b/g, currency).replaceAll('泰铢', name);
+  result = result.replace(/Thai baht \(THB\)|泰铢（THB）/g, `${name} (${currency})`)
+    .replace(/\(THB\)/g, `(${currency})`).replace(/（泰铢）/g, `（${name}）`)
+    .replace(/^(Currency:|币种：)\s*THB$/, `$1 ${currency}`);
   return result;
 }

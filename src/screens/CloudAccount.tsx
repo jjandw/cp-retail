@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from '@/i18n/react';
+import { DisplayPreferences } from '@/i18n/language';
+import { BrandLogo } from '@/components/brand-logo';
 import { supabase } from '@/lib/supabase-client';
 import { landingStudioPath, workspaceReturnPath } from '@/lib/routes.mjs';
 import { readLandingRole } from '@/lib/landing-content';
@@ -17,7 +19,7 @@ export function workspaceDestination() {
 
 function AccountCard({ title, children }: { title: string; children: React.ReactNode }) {
   return <main className="preview-entry"><div className="preview-entry-card">
-    <a className="preview-brand" href="/"><img src="/cp-retail.svg" alt="" width="36" height="36" /> CP Retail</a>
+    <a className="preview-brand" href="/"><BrandLogo /></a>
     <p className="preview-kicker">Account</p>
     <h1>{title}</h1>
     {children}
@@ -85,6 +87,7 @@ export function CloudAccount({ email, fullName }: { email: string; fullName: str
         {savingName ? 'Saving name…' : 'Update name'}
       </button>
     </form>
+    <DisplayPreferences />
     {error && <p className="account-error" role="alert">{error}</p>}
     <div className="preview-actions">
       <a className="preview-primary" href="/workspace">Return to workspace</a>

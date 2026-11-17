@@ -3,7 +3,7 @@
 import React, { useContext, forwardRef } from 'react';
 import { LanguageContext, translate, translateChildren } from './language';
 import { formatCurrencyText } from './currency.mjs';
-export { lazy, useState, useRef, useEffect, useSyncExternalStore } from 'react';
+export { lazy, Suspense, useState, useRef, useEffect, useSyncExternalStore } from 'react';
 
 const LocalizedHost = forwardRef<any, any>(function LocalizedHost({ tag, children, ...props }, ref) {
   const {language, currency, rates} = useContext(LanguageContext);

@@ -1,3 +1,5 @@
+import { BrandLogo } from '@/components/brand-logo';
+import { LanguageContext } from '@/i18n/language';
 import { opsModel, opsRound } from '@/lib/scenario-math.mjs';
 import React, { useState, useRef, useEffect } from '@/i18n/react';
 import { BarChart3, LayoutDashboard, UploadCloud, Users, Sparkles, BookmarkCheck, ArrowRight, ArrowLeft, Download, CheckCircle2, ShieldCheck, Package, Search, Store, CalendarDays, RotateCcw, LogIn, Info, ChevronRight, AlertTriangle, DollarSign, Percent, ShoppingCart, Layers, HelpCircle, Menu, X, FileSpreadsheet, ClipboardCheck, Home, Target, ThumbsUp, ThumbsDown } from 'lucide-react';
@@ -1193,6 +1195,7 @@ function opsSnapshotEvidence(value:string) {
   try {const snapshot=JSON.parse(value);return snapshot.operationalRecommendation||opsReadEvidence(snapshot.inputs?.notes);}catch{return null;}
 }
 function RecommendationSavedPlan({saved,user,creatorId,onDecisions,onRestart,openSavedScenario}:any) {
+  const {language}=React.useContext(LanguageContext);
   const record=useRecord({from:ds.scenarios,select:savedScenarioSelect,recordId:saved.id});
   const createDecision=useRecordCreate({from:ds.decisions,fields:decisionCreateFields,onSuccess:()=>emitTestEvent('decision-saved')});
   const recordLink=useNavigationSetting({name:'ops-saved-scenario-link',label:'Saved recommendation scenario destination',initialValue:{destination:'/pixso-preview',openIn:'SELF'}});
@@ -1210,7 +1213,7 @@ function RecommendationSavedPlan({saved,user,creatorId,onDecisions,onRestart,ope
     busy.current=true;
     try {
       const snapshot=JSON.stringify({capturedAt:new Date().toISOString(),scenarioId:saved.id,inputs:{name:dbText(f.name),product:dbText(f.product),referencePrice:f.referencePrice,cost:f.cost,discount:f.discount,units:f.units,stock:f.stock,period:f.period,comparisonGroup:dbText(f.comparisonGroup),notes:dbText(f.notes),source:dbText(f.source)},results:{inputCheck:dbText(f.inputCheck),discountedPrice:f.discountedPrice,revenue:f.revenue,grossProfit:f.grossProfit,remainingStock:f.remainingStock,costCheck:dbText(f.costCheck),stockCheck:dbText(f.stockCheck)},operationalRecommendation:saved.evidence,warning:'Simulated coursework assumptions; pending review is not approval. Snapshot storage is not immutable.'},null,2);
-      const created=await createDecision.mutateAsync({name:('Review '+saved.name).slice(0,1024),reason:reason.trim(),owner:user.email,scenario:[saved.id],decidedBy:[creatorId],snapshot});
+      const created=await createDecision.mutateAsync({name:((language==='zh-CN'?'审核 ':'Review ')+saved.name).slice(0,1024),reason:reason.trim(),owner:user.email,scenario:[saved.id],decidedBy:[creatorId],snapshot});
       if(!created?.id){setError('The save response did not include a record ID. Check My Decisions before attempting another save.');return;}
       setDecisionId(created.id);setError('');
     } catch(err:any){setError((err?.message||'The decision save could not be confirmed.')+' Check My Decisions before retrying.');}
@@ -1227,6 +1230,7 @@ function RecommendationSavedPlan({saved,user,creatorId,onDecisions,onRestart,ope
   </section>;
 }
 function OperationalRecommendations({initialSourceId,initialProfile,onProfiles,loginLink,openScenarios,openDecisions,openSavedScenario,openDemo}:any) {
+  const {language}=React.useContext(LanguageContext);
   const user=useCurrentUser();
   const title=useTextSetting({name:'ops-recommendations-title',label:'Operational recommendations title',initialValue:'Operational recommendations'});
   const [sourceId,setSourceId]=useState(initialSourceId||'');
@@ -1285,7 +1289,8 @@ function OperationalRecommendations({initialSourceId,initialProfile,onProfiles,l
     requestAnimationFrame(()=>resultsRef.current?.scrollIntoView({block:'start',behavior:'smooth'}));
   };
   const selectPlan=(plan:any)=>{
-    setSelected(plan.id);setPlanName(('OPS - '+dbText(source?.fields.name)+' - '+plan.id).slice(0,1024));setRationale('');setError('');
+    const strategy=language==='zh-CN'?({'promotion':'促销','stock-protection':'库存保障','replenishment':'补货'}[plan.id]||'调整'):plan.id;
+    setSelected(plan.id);setPlanName(((language==='zh-CN'?'运营 - ':'OPS - ')+dbText(source?.fields.name)+' - '+strategy).slice(0,1024));setRationale('');setError('');
     requestAnimationFrame(()=>saveRef.current?.scrollIntoView({block:'start',behavior:'smooth'}));
   };
   const savePlan=async()=>{
@@ -1391,6 +1396,7 @@ function AccountNavigation({user,loginLink,className='auth-text-link',children}:
   children?: React.ReactNode;
 }) {
   const accountLink = useNavigationSetting({name:'real-account',label:'Account settings page',initialValue:{destination:'/account',openIn:'SELF'}});
+  if (user?.email) return <button type="button" className={className} onClick={() => window.dispatchEvent(new Event('cp-open-preferences'))}>{children ?? 'Account'}</button>;
   return <NavigationAction navigation={user?.email?accountLink:loginLink} className={className}>
     {children ?? (user?.email?'Account':'Sign in')}
   </NavigationAction>;
@@ -2781,7 +2787,7 @@ export default function Block(){
   </>;
 
   if(!user?.email)return <Landing brand={brand}/>;
-  return <div className="cp-retail" data-view={view} ref={workspaceRootRef}><style>{css}</style>{view!=='login'&&<a className="skip-link" href="#cp-workspace-main">Skip to content</a>}{view==='login'?<AuthEntry brand={brand} user={user} loginLink={loginLink} onContinue={()=>go('my-scenarios')} onExplore={()=>launch('Store Manager')}/>:<div className="app"><aside className={'sidebar '+(menu?'open':'')}><div className="brand"><BrandMark size={34}/><div><strong>{brand} <span className="brand-mode" style={{fontSize:14}}>WORKSPACE</span></strong><p className="brand-subtitle">Decision workspace</p></div></div><nav className="side-nav" aria-label="Store workspace">
+  return <div className="cp-retail" data-view={view} ref={workspaceRootRef}><style>{css}</style>{view!=='login'&&<a className="skip-link" href="#cp-workspace-main">Skip to content</a>}{view==='login'?<AuthEntry brand={brand} user={user} loginLink={loginLink} onContinue={()=>go('my-scenarios')} onExplore={()=>launch('Store Manager')}/>:<div className="app"><aside className={'sidebar '+(menu?'open':'')}><div className="brand cp-workspace-brand"><BrandLogo /><p className="brand-subtitle">Decision workspace</p></div><nav className="side-nav" aria-label="Store workspace">
       <p className="eyebrow">Workspace</p>
       {navItems.map(([key,label,Icon])=><button key={key} className={'nav-button '+(view===key?'active':'')} aria-current={view===key?'page':undefined} onClick={()=>key==='offer'?openOffer():go(key)}><Icon size={16}/><span>{label}</span></button>)}
       <div className="workspace-note"><span className="workspace-note-dot" aria-hidden="true"/><div><strong>{cloudEnabled ? 'CP Retail workspace' : 'Independent preview'}</strong><p>{cloudEnabled ? 'Private workspace records' : 'Simulated data · Saved in this browser'}</p></div></div>

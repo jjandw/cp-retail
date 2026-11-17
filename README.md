@@ -74,17 +74,17 @@ After a release, check the live `/release.json` and sign-in and workspace routes
 
 ## Language, text size and display currency
 
-The top toolbar switches between English and Simplified Chinese and remembers the selection. Switching language resets the default display currency to USD (English) or CNY (Chinese); a separate currency selector can override it. The curated UI dictionary uses English fallback for untranslated text. User-authored content, exported CSVs, snapshots and existing AI replies retain their original content.
+Account settings opens a focused preferences dialog for English/Simplified Chinese and display currency; changes are remembered without leaving the current page or resetting a draft. The public landing has a language link in its footer. Switching language resets the default display currency to USD (English) or CNY (Chinese); a separate currency selector can override it. The curated UI dictionary uses English fallback for untranslated text. User-authored content, exported CSVs and stored snapshots retain their original content. Bounded AI answer templates are translated for display without rewriting stored evidence.
 
-Display amounts are converted from THB using the dated public Frankfurter quote for CNY and USD. The toolbar identifies the quote date. The most recent valid quote is cached; failure without a cache preserves THB amounts and labels instead of substituting a currency symbol. Currency conversion is presentation-only: monetary inputs explicitly remain in original THB, and calculations, CSV schemas and stored records are unchanged.
+Display amounts are converted from THB using the dated public Frankfurter quote for CNY and USD. An optional, collapsed conversion-details section in preferences identifies the quote date. The most recent valid quote is cached; failure without a cache preserves THB amounts and labels instead of substituting a currency symbol. Currency conversion is presentation-only: monetary inputs explicitly remain in original THB, and calculations, CSV schemas and stored records are unchanged.
 
-The toolbar height is measured so that sticky navigation and focus scrolling remain visible at desktop and mobile sizes. Font rules are enlarged in the existing themes rather than scaling the page.
+There is no global settings banner. The supplied CP Retail wordmark is used in the workspace, landing and account headers. Font rules are enlarged in the existing themes rather than scaling the page.
 
 Validation commands (after `npm ci`):
 
 ```sh
 npm run build
-node --test scripts/currency.test.mjs scripts/workspace-routes.test.mjs supabase/tests/advisor.test.mjs
+node --test scripts/currency.test.mjs scripts/translation.test.mjs scripts/workspace-routes.test.mjs supabase/tests/advisor.test.mjs
 node --test --test-concurrency=1 scripts/account-profile.browser.test.mjs scripts/dataset-settings.browser.test.mjs scripts/language-currency.browser.test.mjs scripts/workspace-navigation.browser.test.mjs
 ```
 

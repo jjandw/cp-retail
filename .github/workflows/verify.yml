@@ -81,7 +81,7 @@ jobs:
             echo 'Rebuilt demo preview retained a cloud release asset.'
             exit 1
           fi
-      - run: node --test supabase/tests/advisor.test.mjs scripts/workspace-routes.test.mjs scripts/currency.test.mjs
+      - run: node --test supabase/tests/advisor.test.mjs scripts/workspace-routes.test.mjs scripts/currency.test.mjs scripts/translation.test.mjs
       - name: Verify database policies and historical import
         env:
           PGHOST: 127.0.0.1

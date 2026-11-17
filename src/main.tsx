@@ -1,10 +1,11 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense } from './i18n/react';
 import { createRoot } from 'react-dom/client';
+import { BrandLogo } from './components/brand-logo';
 import { demoUser, WorkspaceIdentity } from './lib/user';
 import { cloudEnabled } from './lib/supabase-client';
 import { workspacePaths } from './lib/routes.mjs';
 import './shell.css';
-import { LanguageProvider, LanguageSwitcher } from './i18n/language';
+import { LanguageProvider, AccountPreferencesDialog, DisplayPreferences } from './i18n/language';
 
 const Landing = lazy(() => import('./screens/Landing'));
 const Workspace = lazy(() => import('./screens/Workspace'));
@@ -14,11 +15,11 @@ const path = window.location.pathname.replace(/\/$/, '') || '/';
 function PreviewEntry({ account = false, missing = false }: { account?: boolean; missing?: boolean }) {
   return <main className="preview-entry">
     <div className="preview-entry-card">
-      <a className="preview-brand" href="/"><img src="/cp-retail.svg" alt="" width="36" height="36" /> CP Retail</a>
+      <a className="preview-brand" href="/"><BrandLogo /></a>
       <p className="preview-kicker">Independent preview</p>
-      <h1>{account ? 'Demo workspace account' : missing ? 'Page not found' : 'Try CP Retail'}</h1>
-      <p>Explore the sample store, check an offer, and save a decision. Use sample or synthetic data.</p>
-      <p>Records are saved in this browser. Shared accounts and cloud AI are pending migration.</p>
+      <h1>{account ? 'Account settings' : missing ? 'Page not found' : 'Try CP Retail'}</h1>
+      {!account && <p>Use simulated transactions to try the full decision workflow.</p>}
+      {account && <DisplayPreferences />}
       <div className="preview-actions">
         <a className="preview-primary" href="/workspace">{account ? 'Return to workspace' : 'Open demo workspace'}</a>
         <a href="/">Back to home</a>
@@ -39,5 +40,5 @@ function App() {
 }
 
 createRoot(document.getElementById('root')!).render(
-  <LanguageProvider><LanguageSwitcher /><Suspense fallback={<main className="preview-entry" role="status">Loading CP Retail…</main>}><App /></Suspense></LanguageProvider>,
+  <LanguageProvider><AccountPreferencesDialog /><Suspense fallback={<main className="preview-entry" role="status">Loading CP Retail…</main>}><App /></Suspense></LanguageProvider>,
 );
