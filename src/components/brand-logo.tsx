@@ -10,7 +10,7 @@ export function BrandIcon({size=34,className=''}:{size?:number;className?:string
 
 export function SidebarBrand({name='CP Retail',subtitle}:{name?:string;subtitle:string}) {
   return <div className="cp-sidebar-brand-row">
-    <img className="cp-sidebar-mark" src="/cp-retail-sidebar-mark.png" alt="" aria-hidden="true" width="44" height="44" />
+    <img className="cp-sidebar-mark" src="/cp-retail-sidebar-mark-v2.png" alt="" aria-hidden="true" width="44" height="44" />
     <div className="cp-sidebar-wordmark"><strong>{name}</strong><p className="brand-subtitle">{subtitle}</p></div>
   </div>;
 }
