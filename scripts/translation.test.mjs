@@ -31,6 +31,7 @@ test('saved user text and CSV identifiers retain their content; dates and genera
  assert.equal(translate('My summer store plan','zh-CN'),'My summer store plan');
  const csv='transaction_id,customer_id,purchased_on,amount_thb';assert.equal(translate(csv,'zh-CN'),csv);
  assert.equal(translate('17 Nov 2026, 16:49','zh-CN'),'2026-11-17 16:49');
+ assert.equal(translate('17 Nov 2026 at 16:49','zh-CN'),'2026-11-17 16:49');
  isChinese('+5 percentage points of discount. Gross profit changes by THB -950.00.');
  isChinese('Compared 3 stock-limited options and selected the changed feasible action with the most gross profit after operating cost. The 5% assumption is 1,000 units. Covering it and the buffer needs 0 extra units; your limit is 0.');
 });

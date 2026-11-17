@@ -25,13 +25,13 @@
     "destination": "/pixso-preview",
     "openIn": "SELF"
   },
-  "saved-scenarios-title": "My Scenarios",
+  "saved-scenarios-title": "Saved scenarios",
   "ops-saved-scenario-link": {
     "action": "OPEN_PAGE",
     "destination": "/pixso-preview",
     "openIn": "SELF"
   },
-  "ops-recommendations-title": "Operational recommendations",
+  "ops-recommendations-title": "Compare actions",
   "real-signup": {
     "action": "OPEN_PAGE",
     "destination": "/sign-up",

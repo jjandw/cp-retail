@@ -20,7 +20,7 @@ test('account preferences preserve drafts, persist language/currency and keep th
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('https://api.frankfurter.dev/**',r=>r.fulfill({json:{base:'THB',date:'2026-11-17',rates:{CNY:0.2,USD:0.03}}}));
  await page.goto('http://127.0.0.1:4177/workspace?view=recommendations');
- await page.getByRole('heading',{name:'Operational recommendations',exact:true}).waitFor();
+ await page.getByRole('heading',{name:'Compare actions',exact:true}).waitFor();
  assert.equal(await page.locator('.cp-language-bar').count(),0);
  assert.equal(await page.locator('.brand img').getAttribute('src'),'/cp-retail-logo.png');
  await page.getByLabel(/^Starting scenario/).selectOption('demo-snack-drink-baseline');
@@ -38,7 +38,7 @@ test('account preferences preserve drafts, persist language/currency and keep th
  await page.getByRole('button',{name:'账号',exact:true}).click();
  assert.equal(await dialog.locator('#cp-currency').inputValue(),'USD');
  await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
- await page.reload();await page.getByRole('heading',{name:'运营建议',exact:true}).waitFor();
+ await page.reload();await page.getByRole('heading',{name:'比较行动方案',exact:true}).waitFor();
  await page.getByRole('button',{name:'账号',exact:true}).click();
  assert.equal(await dialog.locator('#cp-currency').inputValue(),'USD');
  await dialog.locator('#cp-language').selectOption('en');assert.equal(await dialog.locator('#cp-currency').inputValue(),'USD');
@@ -61,12 +61,12 @@ test('the Chinese demo workflow has no untranslated interface prose', {timeout:6
  const audit=location=>assertChineseUI(page,location);
  await page.goto('http://127.0.0.1:4177/workspace');await page.getByRole('heading',{name:'三步完成你的第一个决策。',exact:true}).waitFor();await audit('Start');
  await page.getByRole('button',{name:/打开演示店铺/}).first().click();await page.getByRole('heading',{name:'顾客画像',exact:true}).waitFor();await audit('Customers');
- await page.getByRole('button',{name:/待挽回常客/}).first().click();await page.getByRole('button',{name:'解释此顾客组',exact:true}).click();await audit('Group explanation');
- for(const [view,title]of [['start','继续上次的工作。'],['dashboard','门店经营看板'],['my-scenarios','我的方案'],['my-decisions','我的决策'],['test','测试模式']]) {
+ await page.getByRole('button',{name:/待挽回常客/}).first().click();await page.getByText('了解此顾客组',{exact:true}).click();await page.getByRole('button',{name:'解释此顾客组',exact:true}).click();await audit('Group explanation');
+ for(const [view,title]of [['start','继续上次的工作。'],['dashboard','门店经营看板'],['my-scenarios','已保存方案'],['my-decisions','决策记录'],['test','体验任务与反馈']]) {
   await page.goto('http://127.0.0.1:4177/workspace?view='+view);await page.getByRole('heading',{name:title,exact:true}).waitFor();await audit(view);
  }
- await page.goto('http://127.0.0.1:4177/workspace?view=recommendations');await page.getByRole('heading',{name:'运营建议',exact:true}).waitFor();
- await page.getByLabel(/^起始方案/).selectOption('demo-snack-drink-baseline');await page.getByRole('button',{name:'比较方案',exact:true}).last().click();await page.getByRole('heading',{name:'调整后会有什么变化',exact:true}).waitFor();await audit('Comparison results');
+ await page.goto('http://127.0.0.1:4177/workspace?view=recommendations');await page.getByRole('heading',{name:'比较行动方案',exact:true}).waitFor();
+ await page.getByLabel(/^起始方案/).selectOption('demo-snack-drink-baseline');await page.getByRole('button',{name:'比较行动方案',exact:true}).last().click();await page.getByRole('heading',{name:'调整后会有什么变化',exact:true}).waitFor();await audit('Comparison results');
  await page.goto('http://127.0.0.1:4177/');await page.getByRole('heading',{level:1}).waitFor();await audit('Landing');
 });
 
@@ -79,13 +79,30 @@ test('Chinese scenario creation, comparison and pending-decision saving remain f
  await page.addInitScript(()=>localStorage.setItem('cp-retail-language','zh-CN'));
  await page.route('https://api.frankfurter.dev/**',r=>r.fulfill({json:{base:'THB',date:'2026-11-17',rates:{CNY:0.2,USD:0.03}}}));
  const audit=location=>assertChineseUI(page,location);
- await page.goto('http://127.0.0.1:4177/workspace?view=my-scenarios');await page.getByRole('heading',{name:'我的方案',exact:true}).waitFor();
- await page.getByRole('button',{name:'创建方案',exact:true}).click();await page.getByRole('heading',{name:'创建方案',exact:true}).waitFor();await audit('create-form');
- await page.getByLabel(/^方案名称/).fill('演示测试方案');await page.getByLabel(/^商品/).selectOption('demo-snack-drink');await page.getByLabel(/^参考售价/).fill('95');await page.getByLabel(/^单位成本假设/).fill('66.50');await page.getByLabel(/^折扣百分比/).fill('10');await page.getByLabel(/^假设销量/).selectOption('100');await page.getByLabel(/^可用库存/).selectOption('500');await page.getByLabel(/^周期/).selectOption('30');
- await page.getByRole('button',{name:'创建方案',exact:true}).click();await page.getByRole('heading',{name:'演示测试方案',exact:true}).waitFor();await audit('scenario-saved-list');
- await page.goto('http://127.0.0.1:4177/workspace?view=recommendations');await page.getByRole('heading',{name:'运营建议',exact:true}).waitFor();const source=page.getByLabel(/^起始方案/);const id=await source.locator('option').filter({hasText:'演示测试方案'}).getAttribute('value');await source.selectOption(id);
- await page.getByLabel(/^安全库存目标/).fill('400');await page.getByLabel('假设销量，折扣为 0% 时',{exact:true}).fill('80');await page.getByLabel('假设销量，折扣为 5% 时',{exact:true}).fill('100');await page.getByLabel('假设销量，折扣为 10% 时',{exact:true}).fill('130');
- await page.getByRole('button',{name:'比较方案',exact:true}).last().click();await page.getByRole('heading',{name:'调整后会有什么变化',exact:true}).waitFor();await audit('results');
+ await page.goto('http://127.0.0.1:4177/workspace');
+ await page.getByRole('button',{name:/打开演示店铺/}).first().click();
+ await page.getByRole('button',{name:/待挽回常客/}).first().click();
+ await page.getByLabel(/^无优惠时，预计再次到店/).fill('20');
+ await page.getByLabel(/^有优惠时，预计再次到店/).fill('50');
+ await page.getByLabel(/^毛利率/).fill('35');
+ await page.getByRole('button',{name:'下一步：比较行动方案',exact:true}).click();
+ await page.getByRole('heading',{name:'创建方案',exact:true}).waitFor();await audit('create-form');
+ assert.equal(await page.getByLabel(/^比较顾客组/).inputValue(),'待挽回常客');
+ assert.equal(await page.getByLabel(/^折扣百分比/).inputValue(),'10');
+ assert.equal(await page.getByLabel(/^参考售价/).inputValue(),'19');
+ await page.getByLabel(/^方案名称/).fill('演示测试方案');
+ await page.getByLabel(/^单位成本假设/).fill('13.30');await page.getByLabel(/^假设销量/).selectOption('100');await page.getByLabel(/^可用库存/).selectOption('500');
+ await page.getByRole('button',{name:'创建方案',exact:true}).click();
+ await page.getByRole('heading',{name:'比较行动方案',exact:true}).waitFor();await audit('carried-context');
+ assert.ok(await page.getByRole('region',{name:'已记录的顾客组'}).count() || await page.locator('.profile-context').count());
+ assert.equal(await page.getByLabel(/^比较用单位成本/).inputValue(),'13.3');
+ await page.getByRole('button',{name:'账号',exact:true}).click();const dialog=page.getByRole('dialog');
+ await dialog.locator('#cp-currency').selectOption('USD');await dialog.getByRole('button',{name:'完成',exact:true}).click();
+ assert.equal(await page.getByLabel(/^比较用单位成本/).inputValue(),'2');
+ await page.getByRole('button',{name:'账号',exact:true}).click();await dialog.locator('#cp-currency').selectOption('CNY');await dialog.getByRole('button',{name:'完成',exact:true}).click();
+ assert.equal(await page.getByLabel(/^比较用单位成本/).inputValue(),'13.3');
+ await page.getByText('更多假设',{exact:true}).click();await page.getByLabel(/^安全库存目标/).fill('400');await page.getByLabel('假设销量，折扣为 0% 时',{exact:true}).fill('80');await page.getByLabel('假设销量，折扣为 5% 时',{exact:true}).fill('100');await page.getByLabel('假设销量，折扣为 10% 时',{exact:true}).fill('130');
+ await page.getByRole('button',{name:'比较行动方案',exact:true}).last().click();await page.getByRole('heading',{name:'调整后会有什么变化',exact:true}).waitFor();await audit('results');
  await page.getByRole('button',{name:'选择此方案',exact:true}).first().click();await audit('save-form');assert.ok((await page.getByLabel(/^新方案名称/).inputValue()).startsWith('运营 - '));await page.getByLabel(/^店长选择理由/).fill('先核对需求与库存，再小范围试行。');await page.getByRole('button',{name:'另存为新方案',exact:true}).click();await page.getByRole('heading',{name:'新方案已保存',exact:true}).waitFor();await audit('plan-saved');
  await page.getByRole('button',{name:'保存待审核决策',exact:true}).click();await page.getByText('待审核决策已保存',{exact:true}).waitFor();await audit('decision-saved');
 

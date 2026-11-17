@@ -67,7 +67,7 @@ export function DisplayPreferences() {
       <option value="CNY">{chinese ? '人民币（CNY）' : 'Chinese yuan (CNY)'}</option><option value="USD">{chinese ? '美元（USD）' : 'US dollar (USD)'}</option>
     </select></div>
     <details className="cp-rate-details"><summary>{chinese ? '金额换算说明' : 'About converted amounts'}</summary>
-      <p>{chinese ? '结果按参考汇率换算显示。输入、CSV 和已保存记录仍使用原始泰铢。' : 'Results use reference exchange rates. Inputs, CSVs and saved records remain in original THB.'}</p>
+      <p>{chinese ? '金额输入和结果使用所选币种。CSV 和已保存数据保留原始泰铢。' : 'Money inputs and results use your selected currency. CSVs and saved data retain their original THB basis.'}</p>
       <p role="status">{rates ? `${chinese ? '汇率日期' : 'Rate date'}: ${rateDate} · 1 THB = ${rates[currency]} ${currency}${rateStatus === 'error' ? (chinese ? '（缓存汇率）' : ' (cached)') : ''}` : chinese ? '汇率暂未就绪，金额保留原币 THB。' : 'No rate available yet; amounts remain in THB.'}</p>
       {rateStatus === 'error' && <button type="button" onClick={retryRates}>{chinese ? '重新获取汇率' : 'Retry exchange rates'}</button>}
     </details>
