@@ -119,6 +119,7 @@ async function verifyAdvisorScreens(page, owner, scenarioId) {
   await page.getByRole('button', { name: 'Open demo store', exact: true }).click();
   // Use a different group from the gateway test so both paths generate their own review.
   await page.getByRole('button', { name: /^Recent customers/ }).click();
+  await page.getByText('About this customer group', {exact:true}).click();
   const groupCard = page.getByRole('region', { name: 'CP Retail Advisor', exact: true });
   await groupCard.getByRole('button', { name: 'Explain this group', exact: true }).click();
   await groupCard.getByText('AI insight added', { exact: true }).waitFor({ timeout: 25_000 });
@@ -127,9 +128,10 @@ async function verifyAdvisorScreens(page, owner, scenarioId) {
   assert.ok(firstCheck, 'The saved group answer includes a verification step');
   await groupCard.getByRole('listitem').filter({ hasText: firstCheck }).waitFor();
 
-  await page.getByRole('button', { name: 'Recommendations', exact: true }).click();
+  await page.getByRole('button', { name: 'Compare actions', exact: true }).click();
   await page.getByRole('combobox', { name: /^Starting scenario/ }).selectOption(scenarioId);
   await page.locator('form').getByRole('button', { name: 'Compare actions', exact: true }).click();
+  await page.locator('.ops-ai-disclosure > summary').click();
   const decisionCard = page.getByRole('region', { name: 'Decision readiness review', exact: true });
   await decisionCard.getByRole('button', { name: 'Ask AI: what should I verify first?', exact: true }).click();
   await decisionCard.getByText('AI review saved', { exact: true }).waitFor({ timeout: 25_000 });
@@ -327,7 +329,7 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   assert.equal(before.error?.code, 'email_not_confirmed');
   await page.goto((await mailLink(mailpit, a.email, 'signup', seen)).href);
   await page.waitForURL(url => url.origin === callback && url.pathname === '/workspace');
-  await page.getByRole('button', { name: 'My decisions', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Decision history', exact: true }).waitFor();
   a.user = requireSuccess(await a.supabase.auth.signInWithPassword({ email: a.email, password }), 'Sign in first account').user;
   assert.ok(a.user.email_confirmed_at, 'First email is marked confirmed');
 
@@ -379,11 +381,11 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   await page.waitForURL(callback + '/login?next=%2Fmy-decisions');
   await fillCredentials(page, a.email, password, 'Log in');
   await page.waitForURL(callback + '/my-decisions');
-  await page.getByRole('heading', { name: 'My Decisions', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Decision history', exact: true }).waitFor();
   await page.getByText(decision.name, { exact: true }).waitFor();
 
   await page.goto(callback + '/old-home');
-  await page.getByRole('heading', { name: 'My Scenarios', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Saved scenarios', exact: true }).waitFor();
   await page.getByText(scenario.name, { exact: true }).waitFor();
 
   const legacyDetail = '/item-details?recordId=' + encodeURIComponent(saved.id);
@@ -427,7 +429,7 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   await page.getByLabel('New password', { exact: true }).fill(nextPassword);
   await page.getByRole('button', { name: 'Save password', exact: true }).click();
   await page.waitForURL(callback + '/workspace');
-  await page.getByRole('button', { name: 'My decisions', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Decision history', exact: true }).waitFor();
   const wrongPassword = await client().auth.signInWithPassword({ email: a.email, password });
   assert.equal(wrongPassword.error?.code, 'invalid_credentials');
   const signedIn = client();
@@ -442,7 +444,7 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
     await page.reload();
     await page.locator('.l-nav').getByRole('link', { name: 'Open workspace', exact: true }).click();
     await page.waitForURL(callback + '/workspace');
-    await page.getByRole('button', { name: 'My decisions', exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Decision history', exact: true }).waitFor();
     await page.goto(callback + '/');
     await page.locator('.l-nav').getByRole('link', { name: 'Open workspace', exact: true }).waitFor();
     assert.equal(new URL(page.url()).pathname, '/');
@@ -458,10 +460,11 @@ test('the built site verifies email, opens the decision bookmark, resets passwor
   await t.test('modified analysis settings reopen from the isolated Supabase dataset', async () => {
     await page.goto(callback + '/workspace?view=profiles');
     const data = page.getByRole('region', { name: 'Your data', exact: true });
-    const lookback = page.getByRole('combobox', { name: /^Lookback window/ });
+    const lookback = page.getByRole('combobox', { name: /^Lookback window/, includeHidden: true });
     const savedData = data.getByRole('combobox', { name: /^Saved data/ });
     await data.getByRole('button', { name: 'Open demo store', exact: true }).click();
     await data.getByText(/analysis date 2026-11-05 · saved to your account/).waitFor();
+    await page.getByText('Import or edit transaction data', {exact:true}).click();
     await page.getByLabel('Analysis date', { exact: true }).fill('2026-11-07');
     await lookback.selectOption('60');
     await page.getByRole('button', { name: 'Analyze transactions', exact: true }).click();

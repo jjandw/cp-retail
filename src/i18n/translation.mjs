@@ -3,6 +3,8 @@ import { zh } from './zh.mjs';
 // Numeric templates cover rule-generated advice, including the server's bounded
 // AI renderers. Translation never changes stored evidence or model inputs.
 const templates = [
+  [/^pays back \(break-even ([\d.]+)% return\)$/, '可回本（回本需要 $1% 再次到店）'],
+  [/^below break-even \(break-even ([\d.]+)% return\)$/, '未回本（回本需要 $1% 再次到店）'],
   [/^([+−\d,. -]+) units$/, '$1 件'],
   [/^Subtracts ((?:THB |฿)[+−-]?[\d,]+(?:\.\d+)?) supplied operating cost$/, '减去已填写的运营成本 $1'],
   [/^([\d.]+)% must return$/, '至少需要 $1% 回流'],
@@ -97,7 +99,7 @@ export function translate(text, language = 'zh-CN') {
   const core = text.trim();
   if (!core) return text;
   const months = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-  const date = core.match(/^(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4}), (\d{2}:\d{2})$/);
+  const date = core.match(/^(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})(?:,| at) (\d{2}:\d{2})$/);
   if (date) return text.replace(core, `${date[3]}-${months[date[2]]}-${date[1].padStart(2,'0')} ${date[4]}`);
   const day = core.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})$/);
   if (day) return text.replace(core, `${Number(months[day[1]])}月${day[2]}日`);

@@ -32,7 +32,7 @@ test('dataset settings are saved and reopened without marking edits during a wri
   const customers = page.getByRole('button', { name: 'Customers', exact: true });
   const data = page.getByRole('region', { name: 'Your data', exact: true });
   const date = page.getByLabel('Analysis date', { exact: true });
-  const lookback = page.getByRole('combobox', { name: /^Lookback window/ });
+  const lookback = page.getByRole('combobox', { name: /^Lookback window/, includeHidden: true });
   const savedData = data.getByRole('combobox', { name: /^Saved data/ });
   const analyze = page.getByRole('button', { name: 'Analyze transactions', exact: true });
   const save = data.getByRole('button', { name: 'Save in this browser', exact: true });
@@ -43,6 +43,7 @@ test('dataset settings are saved and reopened without marking edits during a wri
     await waitForSaved(asOf);
     assert.equal(await lookback.inputValue(), days);
   };
+  const editData = async () => { if (!await date.isVisible()) await page.getByText('Import or edit transaction data', {exact:true}).click(); };
   const datasets = () => page.evaluate(key => JSON.parse(localStorage.getItem(key)).datasets, storageKey);
 
   await page.goto(origin + '/workspace');
@@ -53,7 +54,7 @@ test('dataset settings are saved and reopened without marking edits during a wri
   await waitForSaved('2026-11-05');
   const [original] = await datasets();
 
-  await date.fill('2026-11-06');
+  await editData(); await date.fill('2026-11-06');
   await lookback.selectOption('60');
   await data.getByText('Not saved yet. Analyze transactions to save.', { exact: true }).waitFor();
   await analyze.click();
@@ -68,7 +69,7 @@ test('dataset settings are saved and reopened without marking edits during a wri
   try {
     await save.click();
     await data.getByRole('button', { name: 'Saving…', exact: true }).waitFor();
-    await date.fill('2026-11-07');
+    await editData(); await date.fill('2026-11-07');
     await lookback.selectOption('90');
     await analyze.click();
   } finally {
@@ -96,7 +97,7 @@ test('dataset settings are saved and reopened without marking edits during a wri
   await waitForSaved('2026-11-05');
   const [canonical] = await datasets();
   assert.equal(canonical.fields.p7uW5, 'demo:207');
-  await date.fill('2026-11-09');
+  await editData(); await date.fill('2026-11-09');
   await lookback.selectOption('60');
   await analyze.click();
   await save.click();

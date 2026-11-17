@@ -33,10 +33,10 @@ test('workspace sections and scenario details survive reload and browser history
   await shown(profilePath, 'Customer profiles');
   await section('Dashboard').click();
   await shown(dashboardPath, 'No sales data yet');
-  await section('My decisions').click();
-  await shown(decisionsPath, 'My Decisions');
+  await section('Decision history').click();
+  await shown(decisionsPath, 'Decision history');
   await page.reload();
-  await shown(decisionsPath, 'My Decisions');
+  await shown(decisionsPath, 'Decision history');
   await page.goBack();
   await shown(dashboardPath, 'No sales data yet');
   await page.goBack();
@@ -44,7 +44,7 @@ test('workspace sections and scenario details survive reload and browser history
   await page.goForward();
   await shown(dashboardPath, 'No sales data yet');
   await page.goForward();
-  await shown(decisionsPath, 'My Decisions');
+  await shown(decisionsPath, 'Decision history');
 
   const record = 'demo-snack-drink-baseline';
   const legacyDetail = '/item-details?recordId=' + record;
@@ -52,17 +52,17 @@ test('workspace sections and scenario details survive reload and browser history
   const scenarios = '/workspace?view=my-scenarios';
   const scenarioName = 'Demo baseline · Snack + drink';
   await page.goto(origin + '/my-decisions');
-  await shown('/my-decisions', 'My Decisions');
+  await shown('/my-decisions', 'Decision history');
   await page.goto(origin + '/old-home');
-  await shown('/old-home', 'My Scenarios');
+  await shown('/old-home', 'Saved scenarios');
   await page.goto(origin + legacyDetail);
   await shown(legacyDetail, scenarioName);
   await page.getByRole('button', { name: 'Back to My Scenarios', exact: true }).click();
-  await shown(scenarios, 'My Scenarios');
+  await shown(scenarios, 'Saved scenarios');
   await page.goBack();
   await shown(legacyDetail, scenarioName);
   await page.goForward();
-  await shown(scenarios, 'My Scenarios');
+  await shown(scenarios, 'Saved scenarios');
   await page.getByRole('link', { name: 'View details', exact: true }).click();
   await shown(detail, scenarioName);
   await page.reload();
