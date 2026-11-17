@@ -1113,5 +1113,6 @@ export const zh = {
   "Customer group": "顾客组",
   "Share of customers": "顾客人数与占比",
   "After operating cost": "扣除运营成本后",
-  "Break-even threshold": "回本线"
+  "Break-even threshold": "回本线",
+  "Detailed offer figures": "查看详细测算数字"
 };

@@ -190,3 +190,5 @@ html[lang="zh-CN"] #root .cp-retail { letter-spacing:normal; }
 @media(max-width:600px){#root .cp-retail .offer-curve text{font-size:22px}#root .cp-retail .offer-curve .curve-money-label:not(.is-zero){display:none}}
 
 #root .cp-retail .is-unavailable:not(.original) .bar-value{background:#becac2}
+
+#root .cp-retail .offer-figures>summary{cursor:pointer;font-size:15px;color:#526e60;padding:8px 0}#root .cp-retail .offer-figures[open]>.metrics{margin-top:14px}
