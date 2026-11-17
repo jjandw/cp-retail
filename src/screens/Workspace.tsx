@@ -1,4 +1,4 @@
-import { BrandLogo } from '@/components/brand-logo';
+import { BrandLogo, BrandIcon } from '@/components/brand-logo';
 import { LanguageContext, translate } from '@/i18n/language';
 import { opsModel, opsRound } from '@/lib/scenario-math.mjs';
 import React, { useState, useRef, useEffect } from '@/i18n/react';
@@ -17,7 +17,7 @@ const savedLocation = cloudEnabled ? 'to your account' : 'in this browser';
 const ds = datasource.define({ scenarios: 'scenarios', decisions: 'decisions', aiRequests: 'aiRequests', datasets: 'datasets', feedback: 'feedback', advisorVotes: 'advisorVotes' });
 
 const money = (n: number) => '฿' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const navItems = [ ['start', 'Start experience', Home], ['dashboard', 'Dashboard', LayoutDashboard], ['profiles', 'Customers', Users], ['offer', 'Offer check', Target], ['recommendations', 'Compare actions', Sparkles], ['my-scenarios', 'Saved scenarios', Layers], ['my-decisions', 'Decision history', BookmarkCheck], ['test', 'Tasks & feedback', ClipboardCheck] ] as const;
+const navItems = [ ['start', 'Start experience', Home], ['dashboard', 'Dashboard', LayoutDashboard], ['profiles', 'Customers', Users], ['recommendations', 'Compare actions', Sparkles], ['my-scenarios', 'Saved scenarios', Layers], ['my-decisions', 'Decision history', BookmarkCheck], ['test', 'Tasks & feedback', ClipboardCheck] ] as const;
 const schemaRows = [ ['store_id','String','DEMO-A'], ['sku','String','SKU-9941-BEV'], ['transaction_id','String','TXN-001'], ['cust_hash','Synthetic ID','CUST-88319'], ['stock_on_hand','Integer ≥ 0','46'], ['units_sold','Integer ≥ 1','4'], ['unit_price','Currency (THB)','32.00'], ['timestamp','ISO 8601 date','2026-09-01T14:32:00+07:00'], ['unit_cost','Currency (THB)','21.00'] ];
 const seeds = [
   {id:'SAMPLE-001',name:'Snack + drink deal — 5% discount',category:'Snacks & drinks',modeled:true,discount:5,units:1250,price:95,cost:62.51,stock:1350,note:'Trial the 5% offer after confirming stock. Estimated gross profit is ฿34,675; demand and cost inputs are illustrative.',status:'Example'},
@@ -1446,7 +1446,7 @@ function AuthEntry({brand,user,loginLink,onContinue,onExplore}: {
   const signedIn = !!user?.email;
   return <section className="auth-entry" aria-labelledby="auth-entry-title">
     <header className="auth-entry-header">
-      <div className="auth-entry-brand"><BrandMark size={40}/><div><strong>{brand}</strong><p>Decision assistant</p></div></div>
+      <div className="auth-entry-brand"><BrandIcon size={40}/><div><strong>{brand}</strong><p>Decision assistant</p></div></div>
       <span className="auth-entry-prototype">Coursework prototype</span>
     </header>
     <main className="auth-entry-main">
@@ -1934,9 +1934,7 @@ function CustomerProfiling({state,setState,onPlan,onCreate,onProfiles,mode='prof
 // END CUSTOMER PROFILING
 
 // BEGIN BRAND LOGO
-function BrandMark({size=34,className=''}:{size?:number;className?:string}) {
-  return <svg className={'brand-logo '+className} width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="15" fill="#21675D"/><path d="M19 24h26l-2.6 23.2a3 3 0 0 1-3 2.8H24.6a3 3 0 0 1-3-2.8z" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinejoin="round"/><path d="M25.5 24v-3a6.5 6.5 0 0 1 13 0v3" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round"/><path d="M25.6 36.4l4.6 4.6 8.6-9" fill="none" stroke="#DCECE6" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-}
+
 // END BRAND LOGO
 
 // BEGIN V2 MODULES
@@ -2298,7 +2296,7 @@ function Landing({brand}: {brand: string}) {
     return () => { io.disconnect(); scroller.removeEventListener('scroll', onScroll); };
   }, []);
   return <div className="cp-landing" ref={rootRef}><style>{landingCss}</style>
-    <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandMark size={26}/>{brand}</span><nav className="l-row l-links"><a href="#how">How it works</a><NavigationAction navigation={loginLink} className="l-link">Log in</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">Start free</NavigationAction></nav></div></header>
+    <header className="l-nav"><div className="l-wrap l-row"><span className="l-brand"><BrandIcon size={26}/>{brand}</span><nav className="l-row l-links"><a href="#how">How it works</a><NavigationAction navigation={loginLink} className="l-link">Log in</NavigationAction><NavigationAction navigation={signupLink} className="l-pill">Start free</NavigationAction></nav></div></header>
     <section className="l-hero"><div className="l-glow" ref={glowRef} aria-hidden="true"/><div className="l-wrap">
       <p className="l-eyebrow lv">For convenience-store managers</p>
       <h1 className="lv d1">Know who to win back.<br/>Before you discount.</h1>
@@ -2805,7 +2803,7 @@ export default function Block(){
 
   if(!user?.email)return <Landing brand={brand}/>;
   return <div className="cp-retail" data-view={view} ref={workspaceRootRef}><style>{css}</style>{view!=='login'&&<a className="skip-link" href="#cp-workspace-main">Skip to content</a>}{view==='login'?<AuthEntry brand={brand} user={user} loginLink={loginLink} onContinue={()=>go('my-scenarios')} onExplore={()=>launch('Store Manager')}/>:<div className="app"><aside className={'sidebar '+(menu?'open':'')}><div className="brand cp-workspace-brand"><BrandLogo /><p className="brand-subtitle">Decision workspace</p></div><nav className="side-nav" aria-label="Store workspace">
-      {navItems.map(([key,label,Icon])=><React.Fragment key={key}>{key==='profiles'&&<p className="nav-group">Analysis & decisions</p>}{key==='my-scenarios'&&<p className="nav-group">History & feedback</p>}<button key={key} className={'nav-button '+(view===key?'active':'')} aria-current={view===key?'page':undefined} onClick={()=>key==='offer'?openOffer():go(key)}><Icon size={16}/><span>{label}</span></button></React.Fragment>)}
+      {navItems.map(([key,label,Icon])=><React.Fragment key={key}>{key==='profiles'&&<p className="nav-group">Analysis & decisions</p>}{key==='my-scenarios'&&<p className="nav-group">History & feedback</p>}<button key={key} className={'nav-button '+(view===key?'active':'')} aria-current={view===key?'page':undefined} onClick={()=>go(key)}><Icon size={16}/><span>{label}</span></button></React.Fragment>)}
       <div className="workspace-note"><span className="workspace-note-dot" aria-hidden="true"/><div><strong>{cloudEnabled ? 'CP Retail workspace' : 'Independent preview'}</strong><p>{cloudEnabled ? 'Private workspace records' : 'Simulated data · Saved in this browser'}</p></div></div>
     </nav><div className="side-bottom"><AccountSummary user={user}/><AccountNavigation user={user} loginLink={loginLink} className="btn account-settings">{user?.email?'Account settings':'Sign in'}</AccountNavigation><a href="/welcome" className="btn welcome-help"><HelpCircle size={15}/>Welcome &amp; help</a></div></aside><div className="workspace"><header className="topbar"><div className="row"><button className="btn mobile-menu" aria-label="Toggle workspace navigation" aria-expanded={menu} onClick={()=>setMenu(!menu)}>{menu?<X size={17}/>:<Menu size={17}/>}</button><span className="breadcrumb muted">Decision Workspace <ChevronRight size={13} style={{display:'inline',verticalAlign:'middle'}}/> <strong style={{color:'#092b50'}}>{navItems.find(n=>n[0]===view)?.[1]}</strong></span></div><div className="row top-meta">{['my-scenarios','my-decisions','recommendations'].includes(view)?<><Pill tone="green">{storageLabel}</Pill><span className="row"><ShieldCheck size={14}/>{view==='my-decisions'?'Your saved decisions':view==='recommendations'?'Scenario planning':'Your saved scenarios'}</span></>:['profiles','upload'].includes(view)?<><Pill tone="green">{profileState.origin}</Pill><span className="row"><CalendarDays size={14}/>{profileState.windowDays}-day window</span></>:<><Pill tone="green">{profileState.analysis?profileState.origin:'No data yet'}</Pill>{profileState.analysis&&<span className="row"><CalendarDays size={14}/>{profileState.windowDays}-day window</span>}</>}</div><AccountNavigation user={user} loginLink={loginLink} className="btn topbar-account"/></header><TestBar state={view==='test'?null:testState} onSkip={()=>setTestState((s:any)=>s&&testSkip(s,Date.now()))} go={go}/><main className="content" id="cp-workspace-main" ref={workspaceMainRef} tabIndex={-1}>{message&&<div className="notice" role="status"><Info size={18}/><p className="small" style={{flex:1}}>{message}</p><button className="btn" aria-label="Dismiss message" onClick={()=>setMessage('')}><X size={12}/></button></div>}{view==='my-scenarios'?<ConnectedScenarios key={`${listVisit}:${recordId ?? ''}`} recordId={recordId} initialDraft={scenarioDraft} onCancelDraft={()=>setScenarioDraft(null)} onFlowCreated={(record:any)=>{setScenarioDraft(null);setOpsSourceId(record.id);go('recommendations');}} onOpenScenario={viewSavedScenario} loginLink={loginLink} openDemo={()=>launch('Store Manager')} backToList={()=>go('my-scenarios')} onRecommend={requestRecommendations}/>:view==='my-decisions'?<ConnectedDecisions loginLink={loginLink} openDemo={()=>launch('Store Manager')} openScenarios={()=>go('my-scenarios')}/>:view==='recommendations'?<OperationalRecommendations initialSourceId={opsSourceId} initialProfile={opsProfile} onCreate={createStartingScenario} onProfiles={()=>go('profiles')} loginLink={loginLink} openDemo={()=>launch('Store Manager')} openScenarios={()=>go('my-scenarios')} openDecisions={()=>go('my-decisions')} openSavedScenario={viewSavedScenario}/>:view==='start'?<StartHome user={user} datasets={datasets} profileState={profileState} go={go} onDemo={openDemo} busy={dataBusy} offerChecked={offerChecked} onAct={actOnAdvice}/>:view==='test'?<TestMode state={testState} onStart={()=>setTestState(testStart(Date.now()))} onSkip={()=>setTestState((s:any)=>s&&testSkip(s,Date.now()))} onReset={()=>setTestState(null)} go={go}/>:view==='dashboard'?<LiveDashboard state={profileState} go={go} pendingCount={pendingCount} onAct={actOnAdvice}/>:view==='upload'?upload:view==='profiles'?profiles:view==='scenarios'?scenarios:savedView}<footer className="footer row between"><span>Coursework workspace · Explicit assumptions · Manager review required</span>{workflowLink}</footer></main></div></div>}</div>;
 }
